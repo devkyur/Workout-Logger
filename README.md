@@ -282,6 +282,58 @@ src/
 
 ---
 
+## 커밋 컨벤션
+
+### 커밋 메시지 형식
+
+```
+<type>: <subject>
+```
+
+### Type 종류
+
+| Type | 설명 | 예시 |
+|------|------|------|
+| `feat` | 새로운 기능 추가 | `feat: 운동 기록 삭제 기능 추가` |
+| `fix` | 버그 수정 | `fix: 로그인 시 토큰 만료 오류 수정` |
+| `docs` | 문서 변경 (README 등) | `docs: API 사용법 문서 추가` |
+| `style` | 코드 포맷팅, 세미콜론 등 (로직 변경 X) | `style: 코드 포맷팅 적용` |
+| `refactor` | 코드 리팩토링 (기능 변경 X) | `refactor: 인증 로직 분리` |
+| `test` | 테스트 코드 추가/수정 | `test: 로그인 단위 테스트 추가` |
+| `chore` | 빌드 설정, 패키지 등 기타 변경 | `chore: ESLint 설정 추가` |
+| `ci` | CI/CD 설정 변경 | `ci: GitHub Actions 배포 설정` |
+| `perf` | 성능 개선 | `perf: 이미지 로딩 최적화` |
+
+### 커밋 메시지 작성 규칙
+
+1. **제목은 50자 이내**로 작성
+2. **마침표 사용하지 않음**
+3. **명령문으로 작성** (과거형 X)
+   - `추가했습니다` (X) → `추가` (O)
+   - `Fixed bug` (X) → `Fix bug` (O)
+4. **한글/영어 혼용 가능** (일관성 유지)
+
+### 예시
+
+```bash
+# 기능 추가
+git commit -m "feat: 월간 캘린더 UI 구현"
+
+# 버그 수정
+git commit -m "fix: 날짜 선택 시 모달 미표시 오류 수정"
+
+# 문서 수정
+git commit -m "docs: README 커밋 컨벤션 추가"
+
+# 설정 변경
+git commit -m "chore: TypeScript strict 모드 활성화"
+
+# 스타일 개선
+git commit -m "style: 로그인 페이지 UI 개선"
+```
+
+---
+
 ## 실행 방법
 
 ```bash
