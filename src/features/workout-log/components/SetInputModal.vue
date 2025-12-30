@@ -1,0 +1,234 @@
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import {
+  IonHeader,
+  IonToolbar,
+  IonTitle,
+  IonContent,
+  IonButtons,
+  IonButton,
+  IonIcon,
+  IonInput,
+  IonTextarea,
+  IonSpinner,
+  modalController,
+} from '@ionic/vue'
+import { closeOutline, addOutline, removeOutline } from 'ionicons/icons'
+import { useWorkout } from '@/composables/useWorkout'
+import type { Exercise } from '@/entities/workout/types'
+
+interface Props {
+  exerciseId: string
+}
+
+interface SetInput {
+  weight: number | null
+  reps: number | null
+  duration_seconds: number | null
+}
+
+const props = defineProps<Props>()
+const { fetchExercises } = useWorkout()
+
+const exercise = ref<Exercise | null>(null)
+const loading = ref(true)
+const memo = ref('')
+const sets = ref<SetInput[]>([
+  { weight: null, reps: null, duration_seconds: null },
+])
+
+const isCardio = computed(() => {
+  // 유산소 카테고리 판별 로직 (나중에 category_id로 판별 가능)
+  const cardioExercises = ['러닝', '사이클', '로잉머신', '스텝밀', '점프로프']
+  return cardioExercises.some((name) => exercise.value?.name.includes(name))
+})
+
+async function loadExercise() {
+  loading.value = true
+  try {
+    const exercises = await fetchExercises()
+    exercise.value = exercises.find((e) => e.id === props.exerciseId) ?? null
+  } catch (e) {
+    console.error('Failed to load exercise:', e)
+  } finally {
+    loading.value = false
+  }
+}
+
+function addSet() {
+  const lastSet = sets.value[sets.value.length - 1]
+  sets.value.push({
+    weight: lastSet?.weight ?? null,
+    reps: lastSet?.reps ?? null,
+    duration_seconds: lastSet?.duration_seconds ?? null,
+  })
+}
+
+function removeSet(index: number) {
+  if (sets.value.length > 1) {
+    sets.value.splice(index, 1)
+  }
+}
+
+function closeModal() {
+  modalController.dismiss(null, 'cancel')
+}
+
+function save() {
+  const validSets = sets.value
+    .map((set, index) => ({
+      set_number: index + 1,
+      weight: set.weight,
+      reps: set.reps,
+      duration_seconds: set.duration_seconds,
+    }))
+    .filter((set) => set.weight || set.reps || set.duration_seconds)
+
+  modalController.dismiss({ sets: validSets, memo: memo.value }, 'save')
+}
+
+onMounted(loadExercise)
+</script>
+
+<template>
+  <ion-header>
+    <ion-toolbar>
+      <ion-buttons slot="start">
+        <ion-button @click="closeModal">
+          <ion-icon :icon="closeOutline" />
+        </ion-button>
+      </ion-buttons>
+      <ion-title>{{ exercise?.name ?? '세트 입력' }}</ion-title>
+      <ion-buttons slot="end">
+        <ion-button strong @click="save">저장</ion-button>
+      </ion-buttons>
+    </ion-toolbar>
+  </ion-header>
+
+  <ion-content class="ion-padding">
+    <div v-if="loading" class="loading-container">
+      <ion-spinner name="crescent" />
+    </div>
+
+    <template v-else>
+      <!-- 세트 입력 -->
+      <div class="sets-section">
+        <div class="section-header">
+          <h3>세트</h3>
+          <ion-button fill="clear" size="small" @click="addSet">
+            <ion-icon :icon="addOutline" slot="start" />
+            세트 추가
+          </ion-button>
+        </div>
+
+        <div v-for="(set, index) in sets" :key="index" class="set-row">
+          <span class="set-number">{{ index + 1 }}</span>
+
+          <template v-if="isCardio">
+            <ion-input
+              v-model.number="set.duration_seconds"
+              type="number"
+              placeholder="시간(초)"
+              fill="outline"
+              class="set-input"
+            />
+          </template>
+
+          <template v-else>
+            <ion-input
+              v-model.number="set.weight"
+              type="number"
+              placeholder="무게"
+              fill="outline"
+              class="set-input"
+            >
+              <span slot="end" class="input-suffix">kg</span>
+            </ion-input>
+
+            <ion-input
+              v-model.number="set.reps"
+              type="number"
+              placeholder="횟수"
+              fill="outline"
+              class="set-input"
+            >
+              <span slot="end" class="input-suffix">회</span>
+            </ion-input>
+          </template>
+
+          <ion-button
+            v-if="sets.length > 1"
+            fill="clear"
+            color="danger"
+            size="small"
+            @click="removeSet(index)"
+          >
+            <ion-icon :icon="removeOutline" />
+          </ion-button>
+        </div>
+      </div>
+
+      <!-- 메모 -->
+      <div class="memo-section">
+        <h3>메모 (선택)</h3>
+        <ion-textarea
+          v-model="memo"
+          placeholder="오늘의 컨디션, 느낌 등을 기록하세요"
+          fill="outline"
+          :rows="3"
+        />
+      </div>
+    </template>
+  </ion-content>
+</template>
+
+<style scoped>
+.loading-container {
+  display: flex;
+  justify-content: center;
+  padding: 40px;
+}
+
+.sets-section,
+.memo-section {
+  margin-bottom: 24px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.section-header h3,
+.memo-section h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.set-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.set-number {
+  width: 24px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--ion-color-medium);
+}
+
+.set-input {
+  flex: 1;
+}
+
+.input-suffix {
+  color: var(--ion-color-medium);
+  font-size: 14px;
+  padding-right: 8px;
+}
+</style>
