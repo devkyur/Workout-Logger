@@ -183,7 +183,7 @@ onMounted(loadWorkouts)
     </template>
 
     <!-- 운동 추가 FAB -->
-    <ion-fab slot="fixed" vertical="bottom" horizontal="end">
+    <ion-fab vertical="bottom" horizontal="end" :style="{ position: 'absolute', bottom: '10vh', right: '16px' }">
       <ion-fab-button @click="showExerciseSelector = true">
         <ion-icon :icon="addOutline" />
       </ion-fab-button>
@@ -219,4 +219,5 @@ onMounted(loadWorkouts)
   font-size: 14px;
   margin-top: 8px;
 }
+
 </style>
