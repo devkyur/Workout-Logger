@@ -8,10 +8,19 @@ import {
   IonLabel,
   IonSpinner,
   IonIcon,
+  IonBadge,
 } from '@ionic/vue'
 import { checkmarkOutline } from 'ionicons/icons'
 import { useWorkout } from '@/composables/useWorkout'
 import type { Category, Exercise } from '@/entities/workout/types'
+
+interface Props {
+  existingExerciseIds?: Set<string>
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  existingExerciseIds: () => new Set(),
+})
 
 const emit = defineEmits<{
   select: [exerciseId: string]
@@ -116,9 +125,15 @@ onMounted(loadData)
         :key="exercise.id"
         button
         @click="selectExercise(exercise.id)"
+        :class="{ 'already-added': existingExerciseIds.has(exercise.id) }"
       >
         <ion-label>
-          <h3>{{ exercise.name }}</h3>
+          <h3>
+            {{ exercise.name }}
+            <ion-badge v-if="existingExerciseIds.has(exercise.id)" color="primary" class="added-badge">
+              추가됨
+            </ion-badge>
+          </h3>
           <p>{{ getCategoryName(exercise.category_id) }}</p>
         </ion-label>
       </ion-item>
@@ -177,5 +192,15 @@ onMounted(loadData)
   text-align: center;
   padding: 40px;
   color: var(--ion-color-medium);
+}
+
+.already-added {
+  --background: var(--ion-color-light);
+}
+
+.added-badge {
+  font-size: 10px;
+  margin-left: 6px;
+  vertical-align: middle;
 }
 </style>

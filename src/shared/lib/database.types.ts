@@ -11,19 +11,19 @@ export interface Database {
     Tables: {
       categories: {
         Row: {
-          id: string
+          id: number
           name: string
           slug: string
           sort_order: number
         }
         Insert: {
-          id?: string
+          id?: number
           name: string
           slug: string
           sort_order: number
         }
         Update: {
-          id?: string
+          id?: number
           name?: string
           slug?: string
           sort_order?: number
@@ -31,80 +31,106 @@ export interface Database {
       }
       exercises: {
         Row: {
-          id: string
-          category_id: string
+          id: number
+          category_id: number
           name: string
           is_custom: boolean
-          created_by: string | null
+          created_by: string | null // UUID (auth.users 참조)
           created_at: string
         }
         Insert: {
-          id?: string
-          category_id: string
+          id?: number
+          category_id: number
           name: string
           is_custom?: boolean
           created_by?: string | null
           created_at?: string
         }
         Update: {
-          id?: string
-          category_id?: string
+          id?: number
+          category_id?: number
           name?: string
           is_custom?: boolean
           created_by?: string | null
           created_at?: string
         }
       }
-      workout_logs: {
+      workout_sessions: {
         Row: {
-          id: string
-          user_id: string
+          id: number
+          user_id: string // UUID (auth.users 참조)
           date: string
-          exercise_id: string
           memo: string | null
           created_at: string
         }
         Insert: {
-          id?: string
+          id?: number
           user_id: string
           date: string
-          exercise_id: string
           memo?: string | null
           created_at?: string
         }
         Update: {
-          id?: string
+          id?: number
           user_id?: string
           date?: string
-          exercise_id?: string
           memo?: string | null
           created_at?: string
         }
       }
-      workout_sets: {
+      session_exercises: {
         Row: {
-          id: string
-          workout_log_id: string
+          id: number
+          session_id: number
+          exercise_id: number
+          order_num: number
+          memo: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          session_id: number
+          exercise_id: number
+          order_num?: number
+          memo?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          session_id?: number
+          exercise_id?: number
+          order_num?: number
+          memo?: string | null
+          created_at?: string
+        }
+      }
+      exercise_sets: {
+        Row: {
+          id: number
+          session_exercise_id: number
           set_number: number
           weight: number | null
           reps: number | null
           duration_seconds: number | null
+          created_at: string
         }
         Insert: {
-          id?: string
-          workout_log_id: string
+          id?: number
+          session_exercise_id: number
           set_number: number
           weight?: number | null
           reps?: number | null
           duration_seconds?: number | null
+          created_at?: string
         }
         Update: {
-          id?: string
-          workout_log_id?: string
+          id?: number
+          session_exercise_id?: number
           set_number?: number
           weight?: number | null
           reps?: number | null
           duration_seconds?: number | null
+          created_at?: string
         }
       }
     }
@@ -114,9 +140,11 @@ export interface Database {
 // 편의 타입
 export type Category = Database['public']['Tables']['categories']['Row']
 export type Exercise = Database['public']['Tables']['exercises']['Row']
-export type WorkoutLog = Database['public']['Tables']['workout_logs']['Row']
-export type WorkoutSet = Database['public']['Tables']['workout_sets']['Row']
+export type WorkoutSession = Database['public']['Tables']['workout_sessions']['Row']
+export type SessionExercise = Database['public']['Tables']['session_exercises']['Row']
+export type ExerciseSet = Database['public']['Tables']['exercise_sets']['Row']
 
 // Insert 타입
-export type InsertWorkoutLog = Database['public']['Tables']['workout_logs']['Insert']
-export type InsertWorkoutSet = Database['public']['Tables']['workout_sets']['Insert']
+export type InsertWorkoutSession = Database['public']['Tables']['workout_sessions']['Insert']
+export type InsertSessionExercise = Database['public']['Tables']['session_exercises']['Insert']
+export type InsertExerciseSet = Database['public']['Tables']['exercise_sets']['Insert']

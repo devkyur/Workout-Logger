@@ -15,10 +15,12 @@ import {
 } from '@ionic/vue'
 import { closeOutline, addOutline, removeOutline } from 'ionicons/icons'
 import { useWorkout } from '@/composables/useWorkout'
-import type { Exercise } from '@/entities/workout/types'
+import type { Exercise, ExerciseSet } from '@/entities/workout/types'
 
 interface Props {
   exerciseId: string
+  existingSets?: ExerciseSet[]
+  isAddingToExisting?: boolean
 }
 
 interface SetInput {
@@ -27,7 +29,11 @@ interface SetInput {
   duration_seconds: number | null
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  existingSets: () => [],
+  isAddingToExisting: false,
+})
+
 const { fetchExercises } = useWorkout()
 
 const exercise = ref<Exercise | null>(null)
@@ -38,9 +44,15 @@ const sets = ref<SetInput[]>([
 ])
 
 const isCardio = computed(() => {
-  // 유산소 카테고리 판별 로직 (나중에 category_id로 판별 가능)
   const cardioExercises = ['러닝', '사이클', '로잉머신', '스텝밀', '점프로프']
   return cardioExercises.some((name) => exercise.value?.name.includes(name))
+})
+
+const modalTitle = computed(() => {
+  if (props.isAddingToExisting) {
+    return `${exercise.value?.name ?? ''} - 세트 추가`
+  }
+  return exercise.value?.name ?? '세트 입력'
 })
 
 async function loadExercise() {
@@ -48,6 +60,20 @@ async function loadExercise() {
   try {
     const exercises = await fetchExercises()
     exercise.value = exercises.find((e) => e.id === props.exerciseId) ?? null
+
+    // 기존 세트가 있으면 마지막 세트 값을 기본값으로 사용
+    if (props.existingSets.length > 0) {
+      const lastSet = props.existingSets[props.existingSets.length - 1]
+      if (lastSet) {
+        sets.value = [
+          {
+            weight: lastSet.weight,
+            reps: lastSet.reps,
+            duration_seconds: lastSet.duration_seconds,
+          },
+        ]
+      }
+    }
   } catch (e) {
     console.error('Failed to load exercise:', e)
   } finally {
@@ -98,7 +124,7 @@ onMounted(loadExercise)
           <ion-icon :icon="closeOutline" />
         </ion-button>
       </ion-buttons>
-      <ion-title>{{ exercise?.name ?? '세트 입력' }}</ion-title>
+      <ion-title>{{ modalTitle }}</ion-title>
       <ion-buttons slot="end">
         <ion-button strong @click="save">저장</ion-button>
       </ion-buttons>
@@ -111,10 +137,26 @@ onMounted(loadExercise)
     </div>
 
     <template v-else>
-      <!-- 세트 입력 -->
+      <!-- 기존 세트 표시 (추가 모드일 때) -->
+      <div v-if="isAddingToExisting && existingSets.length > 0" class="existing-sets">
+        <h3>기존 세트</h3>
+        <div class="existing-sets-list">
+          <div v-for="(set, index) in existingSets" :key="set.id" class="existing-set-item">
+            <span class="set-number">{{ index + 1 }}</span>
+            <span v-if="set.duration_seconds">
+              {{ Math.floor(set.duration_seconds / 60) }}:{{
+                (set.duration_seconds % 60).toString().padStart(2, '0')
+              }}
+            </span>
+            <span v-else> {{ set.weight ?? '-' }}kg × {{ set.reps ?? '-' }}회 </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 새 세트 입력 -->
       <div class="sets-section">
         <div class="section-header">
-          <h3>세트</h3>
+          <h3>{{ isAddingToExisting ? '추가할 세트' : '세트' }}</h3>
           <ion-button fill="clear" size="small" @click="addSet">
             <ion-icon :icon="addOutline" slot="start" />
             세트 추가
@@ -122,7 +164,9 @@ onMounted(loadExercise)
         </div>
 
         <div v-for="(set, index) in sets" :key="index" class="set-row">
-          <span class="set-number">{{ index + 1 }}</span>
+          <span class="set-number">
+            {{ isAddingToExisting ? existingSets.length + index + 1 : index + 1 }}
+          </span>
 
           <template v-if="isCardio">
             <ion-input
@@ -187,6 +231,35 @@ onMounted(loadExercise)
   display: flex;
   justify-content: center;
   padding: 40px;
+}
+
+.existing-sets {
+  margin-bottom: 24px;
+  padding: 12px;
+  background: var(--ion-color-light);
+  border-radius: 8px;
+}
+
+.existing-sets h3 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: var(--ion-color-medium);
+}
+
+.existing-sets-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.existing-set-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--ion-background-color);
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
 }
 
 .sets-section,

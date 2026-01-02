@@ -2,10 +2,10 @@
 import { computed } from 'vue'
 import { IonCard, IonCardHeader, IonCardTitle, IonCardContent, IonButton, IonIcon } from '@ionic/vue'
 import { trashOutline } from 'ionicons/icons'
-import type { WorkoutLogWithSets } from '@/entities/workout/types'
+import type { SessionExerciseWithSets } from '@/entities/workout/types'
 
 interface Props {
-  workout: WorkoutLogWithSets
+  sessionExercise: SessionExerciseWithSets
 }
 
 const props = defineProps<Props>()
@@ -13,10 +13,10 @@ const emit = defineEmits<{
   delete: []
 }>()
 
-const exerciseName = computed(() => props.workout.exercise?.name ?? '알 수 없는 운동')
+const exerciseName = computed(() => props.sessionExercise.exercise?.name ?? '알 수 없는 운동')
 
 const setsDisplay = computed(() => {
-  return props.workout.sets.map((set) => {
+  return props.sessionExercise.sets.map((set) => {
     if (set.duration_seconds) {
       const mins = Math.floor(set.duration_seconds / 60)
       const secs = set.duration_seconds % 60
@@ -27,7 +27,7 @@ const setsDisplay = computed(() => {
 })
 
 const totalVolume = computed(() => {
-  return props.workout.sets.reduce((acc, set) => {
+  return props.sessionExercise.sets.reduce((acc, set) => {
     if (set.weight && set.reps) {
       return acc + set.weight * set.reps
     }
@@ -59,7 +59,7 @@ const totalVolume = computed(() => {
         총 볼륨: {{ totalVolume.toLocaleString() }}kg
       </div>
 
-      <p v-if="workout.memo" class="memo">{{ workout.memo }}</p>
+      <p v-if="sessionExercise.memo" class="memo">{{ sessionExercise.memo }}</p>
     </ion-card-content>
   </ion-card>
 </template>
