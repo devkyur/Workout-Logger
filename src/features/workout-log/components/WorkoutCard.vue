@@ -11,7 +11,15 @@ interface Props {
 const props = defineProps<Props>()
 const emit = defineEmits<{
   delete: []
+  edit: []
 }>()
+
+function handleCardClick(event: Event) {
+  // 삭제 버튼 클릭 시에는 edit 이벤트 발생 안 함
+  const target = event.target as HTMLElement
+  if (target.closest('ion-button')) return
+  emit('edit')
+}
 
 const exerciseName = computed(() => props.sessionExercise.exercise?.name ?? '알 수 없는 운동')
 
@@ -37,7 +45,7 @@ const totalVolume = computed(() => {
 </script>
 
 <template>
-  <ion-card class="workout-card">
+  <ion-card class="workout-card" button @click="handleCardClick">
     <ion-card-header>
       <div class="card-header-content">
         <ion-card-title class="exercise-name">{{ exerciseName }}</ion-card-title>

@@ -20,7 +20,8 @@ import { format, parseISO } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import { useWorkout } from '@/composables/useWorkout'
 import { useAuth } from '@/composables/useAuth'
-import type { WorkoutSessionWithExercises } from '@/entities/workout/types'
+import { supabase } from '@/shared/lib/supabase'
+import type { WorkoutSessionWithExercises, SessionExerciseWithSets } from '@/entities/workout/types'
 import WorkoutCard from './WorkoutCard.vue'
 import ExerciseSelector from '@/features/exercise-selector/components/ExerciseSelector.vue'
 import SetInputModal from './SetInputModal.vue'
@@ -38,6 +39,7 @@ const {
   addExerciseToSession,
   deleteSessionExercise,
   deleteEmptySession,
+  updateExerciseSets,
 } = useWorkout()
 
 const loading = ref(true)
@@ -68,7 +70,7 @@ function closeModal(role?: string) {
   modalController.dismiss(null, role)
 }
 
-async function handleExerciseSelected(exerciseId: string) {
+async function handleExerciseSelected(exerciseId: number) {
   showExerciseSelector.value = false
 
   // 이미 해당 운동이 있는지 확인
@@ -128,7 +130,7 @@ async function handleExerciseSelected(exerciseId: string) {
   }
 }
 
-async function handleDeleteExercise(sessionExerciseId: string) {
+async function handleDeleteExercise(sessionExerciseId: number) {
   const alert = await alertController.create({
     header: '삭제 확인',
     message: '이 운동 기록을 삭제하시겠습니까?',
@@ -169,6 +171,56 @@ async function handleDeleteExercise(sessionExerciseId: string) {
   await alert.present()
 }
 
+async function handleEditExercise(sessionExercise: SessionExerciseWithSets) {
+  const modal = await modalController.create({
+    component: SetInputModal,
+    componentProps: {
+      exerciseId: sessionExercise.exercise_id,
+      existingSets: sessionExercise.sets,
+      existingMemo: sessionExercise.memo,
+      isEditMode: true,
+    },
+    breakpoints: [0, 0.75],
+    initialBreakpoint: 0.75,
+  })
+
+  await modal.present()
+
+  const { data, role } = await modal.onWillDismiss()
+
+  if (role === 'save' && data) {
+    try {
+      // 세트 업데이트
+      await updateExerciseSets(sessionExercise.id, data.sets)
+
+      // 메모 업데이트
+      if (data.memo !== sessionExercise.memo) {
+        const { error } = await supabase
+          .from('session_exercises')
+          .update({ memo: data.memo || null })
+          .eq('id', sessionExercise.id)
+        if (error) throw error
+      }
+
+      const toast = await toastController.create({
+        message: '수정되었습니다',
+        duration: 1500,
+        color: 'success',
+      })
+      await toast.present()
+
+      await loadSession()
+    } catch (e: any) {
+      const toast = await toastController.create({
+        message: e.message || '수정에 실패했습니다',
+        duration: 2000,
+        color: 'danger',
+      })
+      await toast.present()
+    }
+  }
+}
+
 onMounted(loadSession)
 </script>
 
@@ -196,6 +248,7 @@ onMounted(loadSession)
           v-for="exercise in session.exercises"
           :key="exercise.id"
           :session-exercise="exercise"
+          @edit="handleEditExercise(exercise)"
           @delete="handleDeleteExercise(exercise.id)"
         />
       </div>

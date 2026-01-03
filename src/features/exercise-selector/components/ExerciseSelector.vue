@@ -15,7 +15,7 @@ import { useWorkout } from '@/composables/useWorkout'
 import type { Category, Exercise } from '@/entities/workout/types'
 
 interface Props {
-  existingExerciseIds?: Set<string>
+  existingExerciseIds?: Set<number>
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -23,7 +23,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{
-  select: [exerciseId: string]
+  select: [exerciseId: number]
   close: []
 }>()
 
@@ -32,7 +32,7 @@ const { fetchCategories, fetchExercises } = useWorkout()
 const loading = ref(true)
 const categories = ref<Category[]>([])
 const exercises = ref<Exercise[]>([])
-const selectedCategoryIds = ref<Set<string>>(new Set())
+const selectedCategoryIds = ref<Set<number>>(new Set())
 const searchQuery = ref('')
 
 const filteredExercises = computed(() => {
@@ -52,7 +52,7 @@ const filteredExercises = computed(() => {
   return result
 })
 
-function toggleCategory(categoryId: string) {
+function toggleCategory(categoryId: number) {
   if (selectedCategoryIds.value.has(categoryId)) {
     selectedCategoryIds.value.delete(categoryId)
   } else {
@@ -62,15 +62,15 @@ function toggleCategory(categoryId: string) {
   selectedCategoryIds.value = new Set(selectedCategoryIds.value)
 }
 
-function isCategorySelected(categoryId: string) {
+function isCategorySelected(categoryId: number) {
   return selectedCategoryIds.value.has(categoryId)
 }
 
-function getCategoryName(categoryId: string) {
+function getCategoryName(categoryId: number) {
   return categories.value.find((c) => c.id === categoryId)?.name ?? ''
 }
 
-function selectExercise(exerciseId: string) {
+function selectExercise(exerciseId: number) {
   emit('select', exerciseId)
 }
 

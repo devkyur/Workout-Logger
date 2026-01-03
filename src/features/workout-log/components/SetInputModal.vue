@@ -18,9 +18,11 @@ import { useWorkout } from '@/composables/useWorkout'
 import type { Exercise, ExerciseSet } from '@/entities/workout/types'
 
 interface Props {
-  exerciseId: string
+  exerciseId: number
   existingSets?: ExerciseSet[]
+  existingMemo?: string | null
   isAddingToExisting?: boolean
+  isEditMode?: boolean
 }
 
 interface SetInput {
@@ -31,7 +33,9 @@ interface SetInput {
 
 const props = withDefaults(defineProps<Props>(), {
   existingSets: () => [],
+  existingMemo: null,
   isAddingToExisting: false,
+  isEditMode: false,
 })
 
 const { fetchExercises } = useWorkout()
@@ -49,6 +53,9 @@ const isCardio = computed(() => {
 })
 
 const modalTitle = computed(() => {
+  if (props.isEditMode) {
+    return `${exercise.value?.name ?? ''} - 수정`
+  }
   if (props.isAddingToExisting) {
     return `${exercise.value?.name ?? ''} - 세트 추가`
   }
@@ -61,8 +68,17 @@ async function loadExercise() {
     const exercises = await fetchExercises()
     exercise.value = exercises.find((e) => e.id === props.exerciseId) ?? null
 
-    // 기존 세트가 있으면 마지막 세트 값을 기본값으로 사용
-    if (props.existingSets.length > 0) {
+    // 수정 모드: 기존 세트를 편집 가능하게 로드
+    if (props.isEditMode && props.existingSets.length > 0) {
+      sets.value = props.existingSets.map((set) => ({
+        weight: set.weight,
+        reps: set.reps,
+        duration_seconds: set.duration_seconds,
+      }))
+      memo.value = props.existingMemo ?? ''
+    }
+    // 추가 모드: 마지막 세트 값을 기본값으로
+    else if (props.isAddingToExisting && props.existingSets.length > 0) {
       const lastSet = props.existingSets[props.existingSets.length - 1]
       if (lastSet) {
         sets.value = [
@@ -137,8 +153,8 @@ onMounted(loadExercise)
     </div>
 
     <template v-else>
-      <!-- 기존 세트 표시 (추가 모드일 때) -->
-      <div v-if="isAddingToExisting && existingSets.length > 0" class="existing-sets">
+      <!-- 기존 세트 표시 (추가 모드일 때만, 수정 모드는 직접 편집) -->
+      <div v-if="isAddingToExisting && !isEditMode && existingSets.length > 0" class="existing-sets">
         <h3>기존 세트</h3>
         <div class="existing-sets-list">
           <div v-for="(set, index) in existingSets" :key="set.id" class="existing-set-item">
@@ -153,10 +169,10 @@ onMounted(loadExercise)
         </div>
       </div>
 
-      <!-- 새 세트 입력 -->
+      <!-- 세트 입력/수정 -->
       <div class="sets-section">
         <div class="section-header">
-          <h3>{{ isAddingToExisting ? '추가할 세트' : '세트' }}</h3>
+          <h3>{{ isAddingToExisting && !isEditMode ? '추가할 세트' : '세트' }}</h3>
           <ion-button fill="clear" size="small" @click="addSet">
             <ion-icon :icon="addOutline" slot="start" />
             세트 추가
@@ -165,7 +181,7 @@ onMounted(loadExercise)
 
         <div v-for="(set, index) in sets" :key="index" class="set-row">
           <span class="set-number">
-            {{ isAddingToExisting ? existingSets.length + index + 1 : index + 1 }}
+            {{ isAddingToExisting && !isEditMode ? existingSets.length + index + 1 : index + 1 }}
           </span>
 
           <template v-if="isCardio">

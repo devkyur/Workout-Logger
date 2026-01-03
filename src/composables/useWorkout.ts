@@ -151,8 +151,8 @@ export function useWorkout() {
 
   // 세션에 운동 추가 (기존 운동이면 세트만 추가)
   async function addExerciseToSession(
-    sessionId: string,
-    exerciseId: string,
+    sessionId: number,
+    exerciseId: number,
     sets: Omit<InsertExerciseSet, 'session_exercise_id'>[],
     memo?: string | null
   ): Promise<SessionExercise> {
@@ -233,7 +233,7 @@ export function useWorkout() {
   }
 
   // 세션 운동 삭제
-  async function deleteSessionExercise(sessionExerciseId: string): Promise<void> {
+  async function deleteSessionExercise(sessionExerciseId: number): Promise<void> {
     const { error } = await supabase
       .from('session_exercises')
       .delete()
@@ -243,7 +243,7 @@ export function useWorkout() {
   }
 
   // 빈 세션 삭제 (운동이 없는 세션 정리용)
-  async function deleteEmptySession(sessionId: string): Promise<void> {
+  async function deleteEmptySession(sessionId: number): Promise<void> {
     const { data: exercises } = await supabase
       .from('session_exercises')
       .select('id')
@@ -257,7 +257,7 @@ export function useWorkout() {
 
   // 세트 업데이트
   async function updateExerciseSets(
-    sessionExerciseId: string,
+    sessionExerciseId: number,
     newSets: Omit<InsertExerciseSet, 'session_exercise_id'>[]
   ): Promise<void> {
     // 기존 세트 삭제
@@ -277,7 +277,7 @@ export function useWorkout() {
   }
 
   // 세션 메모 업데이트
-  async function updateSessionMemo(sessionId: string, memo: string): Promise<void> {
+  async function updateSessionMemo(sessionId: number, memo: string): Promise<void> {
     const { error } = await supabase
       .from('workout_sessions')
       .update({ memo })
