@@ -15,7 +15,9 @@ import {
 } from '@ionic/vue'
 import { closeOutline, addOutline, removeOutline } from 'ionicons/icons'
 import { useWorkout } from '@/composables/useWorkout'
-import type { Exercise, ExerciseSet } from '@/entities/workout/types'
+import type { Exercise, ExerciseSet, PreviousExerciseRecord } from '@/entities/workout/types'
+import { format, parseISO } from 'date-fns'
+import { ko } from 'date-fns/locale'
 
 interface Props {
   exerciseId: number
@@ -23,6 +25,7 @@ interface Props {
   existingMemo?: string | null
   isAddingToExisting?: boolean
   isEditMode?: boolean
+  currentDate?: string
 }
 
 interface SetInput {
@@ -36,9 +39,10 @@ const props = withDefaults(defineProps<Props>(), {
   existingMemo: null,
   isAddingToExisting: false,
   isEditMode: false,
+  currentDate: undefined,
 })
 
-const { fetchExercises } = useWorkout()
+const { fetchExercises, fetchPreviousExerciseRecord } = useWorkout()
 
 const exercise = ref<Exercise | null>(null)
 const loading = ref(true)
@@ -46,6 +50,7 @@ const memo = ref('')
 const sets = ref<SetInput[]>([
   { weight: null, reps: null, duration_seconds: null },
 ])
+const previousRecord = ref<PreviousExerciseRecord | null>(null)
 
 const isCardio = computed(() => {
   const cardioExercises = ['러닝', '사이클', '로잉머신', '스텝밀', '점프로프']
@@ -67,6 +72,18 @@ async function loadExercise() {
   try {
     const exercises = await fetchExercises()
     exercise.value = exercises.find((e) => e.id === props.exerciseId) ?? null
+
+    // 이전 기록 로드 (수정 모드가 아닐 때만)
+    if (!props.isEditMode) {
+      try {
+        previousRecord.value = await fetchPreviousExerciseRecord(
+          props.exerciseId,
+          props.currentDate
+        )
+      } catch (e) {
+        console.error('Failed to load previous record:', e)
+      }
+    }
 
     // 수정 모드: 기존 세트를 편집 가능하게 로드
     if (props.isEditMode && props.existingSets.length > 0) {
@@ -116,6 +133,20 @@ function closeModal() {
   modalController.dismiss(null, 'cancel')
 }
 
+function formatPreviousDate(dateStr: string): string {
+  return format(parseISO(dateStr), 'M월 d일', { locale: ko })
+}
+
+function copyFromPrevious() {
+  if (!previousRecord.value) return
+
+  sets.value = previousRecord.value.sets.map((set) => ({
+    weight: set.weight,
+    reps: set.reps,
+    duration_seconds: set.duration_seconds,
+  }))
+}
+
 function save() {
   const validSets = sets.value
     .map((set, index) => ({
@@ -153,6 +184,28 @@ onMounted(loadExercise)
     </div>
 
     <template v-else>
+      <!-- 이전 기록 표시 (수정 모드가 아니고, 이전 기록이 있을 때) -->
+      <div v-if="!isEditMode && previousRecord" class="previous-record">
+        <div class="previous-record-header">
+          <span class="previous-record-title">이전 기록</span>
+          <span class="previous-record-date">{{ formatPreviousDate(previousRecord.date) }}</span>
+        </div>
+        <div class="previous-record-sets">
+          <div v-for="(set, index) in previousRecord.sets" :key="set.id" class="previous-set-item">
+            <span class="set-number">{{ index + 1 }}</span>
+            <span v-if="set.duration_seconds">
+              {{ Math.floor(set.duration_seconds / 60) }}:{{
+                (set.duration_seconds % 60).toString().padStart(2, '0')
+              }}
+            </span>
+            <span v-else>{{ set.weight ?? '-' }}kg × {{ set.reps ?? '-' }}회</span>
+          </div>
+        </div>
+        <ion-button fill="clear" size="small" class="copy-button" @click="copyFromPrevious">
+          이전 기록 복사
+        </ion-button>
+      </div>
+
       <!-- 기존 세트 표시 (추가 모드일 때만, 수정 모드는 직접 편집) -->
       <div v-if="isAddingToExisting && !isEditMode && existingSets.length > 0" class="existing-sets">
         <h3>기존 세트</h3>
@@ -247,6 +300,55 @@ onMounted(loadExercise)
   display: flex;
   justify-content: center;
   padding: 40px;
+}
+
+.previous-record {
+  margin-bottom: 24px;
+  padding: 12px;
+  background: rgba(var(--ion-color-primary-rgb), 0.1);
+  border-radius: 8px;
+  border-left: 3px solid var(--ion-color-primary);
+}
+
+.previous-record-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.previous-record-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ion-color-primary);
+}
+
+.previous-record-date {
+  font-size: 12px;
+  color: var(--ion-color-medium);
+}
+
+.previous-record-sets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.previous-set-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--ion-background-color);
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.copy-button {
+  --padding-start: 0;
+  --padding-end: 0;
+  font-size: 13px;
 }
 
 .existing-sets {

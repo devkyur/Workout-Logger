@@ -26,3 +26,10 @@ export interface DaySummary {
   categories: string[]
   exerciseCount: number
 }
+
+// 이전 운동 기록 (세트 입력 시 참조용)
+export interface PreviousExerciseRecord {
+  date: string
+  sets: ExerciseSet[]
+  memo: string | null
+}

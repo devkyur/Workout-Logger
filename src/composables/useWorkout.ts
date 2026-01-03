@@ -10,6 +10,7 @@ import type {
 import type {
   WorkoutSessionWithExercises,
   DaySummary,
+  PreviousExerciseRecord,
 } from '@/entities/workout/types'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
 
@@ -286,6 +287,53 @@ export function useWorkout() {
     if (error) throw error
   }
 
+  // 특정 운동의 이전 기록 조회 (가장 최근 기록)
+  async function fetchPreviousExerciseRecord(
+    exerciseId: number,
+    excludeDate?: string
+  ): Promise<PreviousExerciseRecord | null> {
+    // 해당 운동이 포함된 세션들을 날짜 역순으로 조회
+    const { data, error } = await supabase
+      .from('workout_sessions')
+      .select(`
+        date,
+        session_exercises!inner (
+          memo,
+          exercise_id,
+          exercise_sets (*)
+        )
+      `)
+      .eq('session_exercises.exercise_id', exerciseId)
+      .order('date', { ascending: false })
+      .limit(10)
+
+    if (error) throw error
+    if (!data || data.length === 0) return null
+
+    // excludeDate가 있으면 해당 날짜 제외
+    const filteredData = excludeDate
+      ? data.filter((session) => session.date !== excludeDate)
+      : data
+
+    if (filteredData.length === 0) return null
+
+    const latestSession = filteredData[0]
+    const sessionExercise = (latestSession.session_exercises as any[]).find(
+      (se: any) => se.exercise_id === exerciseId
+    )
+
+    if (!sessionExercise) return null
+
+    return {
+      date: latestSession.date,
+      sets:
+        sessionExercise.exercise_sets?.sort(
+          (a: ExerciseSet, b: ExerciseSet) => a.set_number - b.set_number
+        ) ?? [],
+      memo: sessionExercise.memo,
+    }
+  }
+
   return {
     // 기존 함수
     fetchCategories,
@@ -300,5 +348,6 @@ export function useWorkout() {
     deleteEmptySession,
     updateExerciseSets,
     updateSessionMemo,
+    fetchPreviousExerciseRecord,
   }
 }
