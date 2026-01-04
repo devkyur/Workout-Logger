@@ -12,16 +12,16 @@ import {
   IonSpinner,
   modalController,
 } from '@ionic/vue'
-import { chevronBackOutline, chevronForwardOutline, logOutOutline } from 'ionicons/icons'
+import { chevronBackOutline, chevronForwardOutline, settingsOutline } from 'ionicons/icons'
 import { format, addMonths, subMonths } from 'date-fns'
 import { ko } from 'date-fns/locale'
-import { useAuth } from '@/composables/useAuth'
+import { useRouter } from 'vue-router'
 import { useWorkout } from '@/composables/useWorkout'
 import type { DaySummary } from '@/entities/workout/types'
 import MonthGrid from '../components/MonthGrid.vue'
 import WorkoutModal from '@/features/workout-log/components/WorkoutModal.vue'
 
-const { signOut } = useAuth()
+const router = useRouter()
 const { fetchMonthSummary } = useWorkout()
 
 const currentDate = ref(new Date())
@@ -69,8 +69,8 @@ async function openWorkoutModal(date: string) {
   }
 }
 
-async function handleLogout() {
-  await signOut()
+function openSettings() {
+  router.push('/settings')
 }
 
 watch([currentYear, currentMonth], loadMonthData)
@@ -93,8 +93,8 @@ onMounted(loadMonthData)
           <ion-button @click="nextMonth">
             <ion-icon :icon="chevronForwardOutline" />
           </ion-button>
-          <ion-button @click="handleLogout">
-            <ion-icon :icon="logOutOutline" />
+          <ion-button @click="openSettings">
+            <ion-icon :icon="settingsOutline" />
           </ion-button>
         </ion-buttons>
       </ion-toolbar>

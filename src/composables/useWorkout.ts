@@ -315,9 +315,9 @@ export function useWorkout() {
       ? data.filter((session) => session.date !== excludeDate)
       : data
 
-    if (filteredData.length === 0) return null
-
     const latestSession = filteredData[0]
+    if (!latestSession) return null
+
     const sessionExercise = (latestSession.session_exercises as any[]).find(
       (se: any) => se.exercise_id === exerciseId
     )

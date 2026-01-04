@@ -25,6 +25,12 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/features/calendar/views/CalendarView.vue'),
     meta: { requiresAuth: true },
   },
+  {
+    path: '/settings',
+    name: 'Settings',
+    component: () => import('@/features/settings/views/SettingsView.vue'),
+    meta: { requiresAuth: true },
+  },
 ]
 
 const router = createRouter({

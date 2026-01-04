@@ -19,8 +19,8 @@ import '@ionic/vue/css/text-transformation.css'
 import '@ionic/vue/css/flex-utils.css'
 import '@ionic/vue/css/display.css'
 
-/* Theme */
-import '@ionic/vue/css/palettes/dark.system.css'
+/* Theme - class-based dark mode */
+import '@ionic/vue/css/palettes/dark.class.css'
 
 const app = createApp(App)
   .use(IonicVue)
