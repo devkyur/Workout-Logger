@@ -44,7 +44,6 @@ const {
 
 const loading = ref(true)
 const session = ref<WorkoutSessionWithExercises | null>(null)
-const showExerciseSelector = ref(false)
 
 const formattedDate = computed(() =>
   format(parseISO(props.date), 'M월 d일 (EEEE)', { locale: ko })
@@ -70,8 +69,24 @@ function closeModal(role?: string) {
   modalController.dismiss(null, role)
 }
 
+async function openExerciseSelector() {
+  const modal = await modalController.create({
+    component: ExerciseSelector,
+    componentProps: {
+      existingExerciseIds: existingExerciseIds.value,
+    },
+  })
+
+  await modal.present()
+
+  const { data, role } = await modal.onWillDismiss()
+
+  if (role === 'select' && data) {
+    await handleExerciseSelected(data)
+  }
+}
+
 async function handleExerciseSelected(exerciseId: number) {
-  showExerciseSelector.value = false
 
   // 이미 해당 운동이 있는지 확인
   const existingExercise = session.value?.exercises.find(
@@ -259,19 +274,11 @@ onMounted(loadSession)
         <p>기록된 운동이 없습니다</p>
         <p class="hint">+ 버튼을 눌러 운동을 추가하세요</p>
       </div>
-
-      <!-- 운동 종목 선택기 -->
-      <ExerciseSelector
-        v-if="showExerciseSelector"
-        :existing-exercise-ids="existingExerciseIds"
-        @select="handleExerciseSelected"
-        @close="showExerciseSelector = false"
-      />
     </template>
 
     <!-- 운동 추가 FAB -->
     <ion-fab vertical="bottom" horizontal="end" :style="{ position: 'absolute', bottom: '10vh', right: '16px' }">
-      <ion-fab-button @click="showExerciseSelector = true">
+      <ion-fab-button @click="openExerciseSelector">
         <ion-icon :icon="addOutline" />
       </ion-fab-button>
     </ion-fab>

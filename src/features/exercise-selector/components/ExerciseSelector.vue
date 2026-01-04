@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import {
+  IonHeader,
+  IonToolbar,
+  IonTitle,
+  IonButtons,
+  IonButton,
+  IonContent,
   IonSearchbar,
   IonChip,
   IonList,
@@ -9,8 +15,9 @@ import {
   IonSpinner,
   IonIcon,
   IonBadge,
+  modalController,
 } from '@ionic/vue'
-import { checkmarkOutline } from 'ionicons/icons'
+import { closeOutline, checkmarkOutline } from 'ionicons/icons'
 import { useWorkout } from '@/composables/useWorkout'
 import type { Category, Exercise } from '@/entities/workout/types'
 
@@ -21,11 +28,6 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   existingExerciseIds: () => new Set(),
 })
-
-const emit = defineEmits<{
-  select: [exerciseId: number]
-  close: []
-}>()
 
 const { fetchCategories, fetchExercises } = useWorkout()
 
@@ -70,8 +72,12 @@ function getCategoryName(categoryId: number) {
   return categories.value.find((c) => c.id === categoryId)?.name ?? ''
 }
 
+function closeModal() {
+  modalController.dismiss(null, 'cancel')
+}
+
 function selectExercise(exerciseId: number) {
-  emit('select', exerciseId)
+  modalController.dismiss(exerciseId, 'select')
 }
 
 async function loadData() {
@@ -91,15 +97,26 @@ onMounted(loadData)
 </script>
 
 <template>
-  <div class="exercise-selector">
-    <!-- 검색 -->
-    <ion-searchbar
-      v-model="searchQuery"
-      placeholder="운동 검색"
-      :debounce="200"
-      class="search-bar"
-    />
+  <ion-header>
+    <ion-toolbar>
+      <ion-title>운동 선택</ion-title>
+      <ion-buttons slot="end">
+        <ion-button @click="closeModal">
+          <ion-icon :icon="closeOutline" />
+        </ion-button>
+      </ion-buttons>
+    </ion-toolbar>
+    <!-- 검색바를 헤더에 포함 -->
+    <ion-toolbar>
+      <ion-searchbar
+        v-model="searchQuery"
+        placeholder="운동 검색"
+        :debounce="200"
+      />
+    </ion-toolbar>
+  </ion-header>
 
+  <ion-content>
     <!-- 카테고리 필터 -->
     <div class="category-filter">
       <ion-chip
@@ -142,40 +159,22 @@ onMounted(loadData)
         검색 결과가 없습니다
       </div>
     </ion-list>
-  </div>
+  </ion-content>
 </template>
 
 <style scoped>
-.exercise-selector {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  background: var(--ion-background-color);
-  border-radius: 16px 16px 0 0;
-  padding-top: 8px;
-}
-
-.search-bar {
-  padding: 0 8px;
-}
-
 .category-filter {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--ion-color-light);
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ion-color-light-shade);
 }
 
 .loading-container {
   display: flex;
   justify-content: center;
   padding: 40px;
-}
-
-.exercise-list {
-  flex: 1;
-  overflow-y: auto;
 }
 
 .exercise-list ion-item h3 {
