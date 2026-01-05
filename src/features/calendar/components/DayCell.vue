@@ -35,16 +35,15 @@ const isSaturday = computed(() => props.dayOfWeek === 6)
 <style scoped>
 .day-cell {
   aspect-ratio: 1;
-  min-height: 48px;
-  border-radius: 8px;
+  min-height: 44px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: var(--ion-color-light);
-  transition: background-color 0.2s;
   position: relative;
+  transition: background-color 0.15s;
+  border-radius: 50%;
 }
 
 .day-cell:active {
@@ -52,16 +51,22 @@ const isSaturday = computed(() => props.dayOfWeek === 6)
 }
 
 .day-cell.other-month {
-  opacity: 0.4;
+  opacity: 0.3;
 }
 
 .day-cell.today {
-  border: 2px solid var(--ion-color-primary);
+  background: var(--ion-color-primary);
+}
+
+.day-cell.today .day-number {
+  color: #fff;
+  font-weight: 600;
 }
 
 .day-number {
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--ion-text-color);
 }
 
 .day-cell.sunday .day-number {
@@ -72,16 +77,21 @@ const isSaturday = computed(() => props.dayOfWeek === 6)
   color: var(--ion-color-primary);
 }
 
-.today .day-number {
-  font-weight: 700;
+.day-cell.today.sunday .day-number,
+.day-cell.today.saturday .day-number {
+  color: #fff;
 }
 
 .workout-dot {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background: var(--ion-color-success);
   position: absolute;
-  bottom: 6px;
+  bottom: 4px;
+}
+
+.day-cell.today .workout-dot {
+  background: rgba(255, 255, 255, 0.9);
 }
 </style>

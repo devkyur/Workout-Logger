@@ -88,21 +88,26 @@ function handleDateClick(dateStr: string) {
 
 <style scoped>
 .calendar-grid {
-  padding: 8px;
+  padding: 16px;
+  margin: 12px;
+  background: var(--ion-card-background, var(--ion-background-color));
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .weekday-header {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  margin-bottom: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--ion-color-light-shade);
 }
 
 .weekday {
   text-align: center;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
   color: var(--ion-color-medium);
-  padding: 8px 0;
 }
 
 .weekday.sunday {
@@ -116,6 +121,6 @@ function handleDateClick(dateStr: string) {
 .days-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
+  gap: 2px;
 }
 </style>
