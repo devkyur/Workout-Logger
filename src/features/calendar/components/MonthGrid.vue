@@ -42,6 +42,7 @@ const calendarDays = computed(() => {
       date,
       dateStr,
       day: date.getDate(),
+      dayOfWeek: date.getDay(),
       isCurrentMonth: isSameMonth(date, monthStart),
       isToday: isToday(date),
       summary: daySummary,
@@ -75,6 +76,7 @@ function handleDateClick(dateStr: string) {
         v-for="dayInfo in calendarDays"
         :key="dayInfo.dateStr"
         :day="dayInfo.day"
+        :day-of-week="dayInfo.dayOfWeek"
         :is-current-month="dayInfo.isCurrentMonth"
         :is-today="dayInfo.isToday"
         :summary="dayInfo.summary"
