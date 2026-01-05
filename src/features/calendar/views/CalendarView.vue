@@ -28,6 +28,12 @@ const currentDate = ref(new Date())
 const loading = ref(false)
 const monthlySummary = ref<DaySummary[]>([])
 
+// 스와이프 관련 상태
+const swipeStartX = ref(0)
+const swipeStartY = ref(0)
+const swipeOffset = ref(0)
+const isSwiping = ref(false)
+
 const currentYear = computed(() => currentDate.value.getFullYear())
 const currentMonth = computed(() => currentDate.value.getMonth() + 1)
 const monthTitle = computed(() =>
@@ -51,6 +57,50 @@ function prevMonth() {
 
 function nextMonth() {
   currentDate.value = addMonths(currentDate.value, 1)
+}
+
+// 스와이프 핸들러
+const SWIPE_THRESHOLD = 50
+const VERTICAL_THRESHOLD = 75
+
+function onTouchStart(e: TouchEvent) {
+  const touch = e.touches[0]
+  swipeStartX.value = touch.clientX
+  swipeStartY.value = touch.clientY
+  isSwiping.value = true
+}
+
+function onTouchMove(e: TouchEvent) {
+  if (!isSwiping.value) return
+
+  const touch = e.touches[0]
+  const deltaX = touch.clientX - swipeStartX.value
+  const deltaY = Math.abs(touch.clientY - swipeStartY.value)
+
+  // 수직 스크롤이 더 크면 스와이프 취소
+  if (deltaY > VERTICAL_THRESHOLD) {
+    isSwiping.value = false
+    swipeOffset.value = 0
+    return
+  }
+
+  swipeOffset.value = deltaX
+}
+
+function onTouchEnd() {
+  if (!isSwiping.value) {
+    swipeOffset.value = 0
+    return
+  }
+
+  if (swipeOffset.value > SWIPE_THRESHOLD) {
+    prevMonth()
+  } else if (swipeOffset.value < -SWIPE_THRESHOLD) {
+    nextMonth()
+  }
+
+  swipeOffset.value = 0
+  isSwiping.value = false
 }
 
 async function openWorkoutModal(date: string) {
@@ -105,13 +155,21 @@ onMounted(loadMonthData)
         <ion-spinner name="crescent" />
       </div>
 
-      <MonthGrid
+      <div
         v-else
-        :year="currentYear"
-        :month="currentMonth"
-        :summary="monthlySummary"
-        @select-date="openWorkoutModal"
-      />
+        class="swipe-container"
+        @touchstart="onTouchStart"
+        @touchmove="onTouchMove"
+        @touchend="onTouchEnd"
+        :style="{ transform: `translateX(${swipeOffset * 0.3}px)` }"
+      >
+        <MonthGrid
+          :year="currentYear"
+          :month="currentMonth"
+          :summary="monthlySummary"
+          @select-date="openWorkoutModal"
+        />
+      </div>
     </ion-content>
   </ion-page>
 </template>
@@ -122,5 +180,10 @@ onMounted(loadMonthData)
   justify-content: center;
   align-items: center;
   height: 100%;
+}
+
+.swipe-container {
+  transition: transform 0.1s ease-out;
+  will-change: transform;
 }
 </style>
