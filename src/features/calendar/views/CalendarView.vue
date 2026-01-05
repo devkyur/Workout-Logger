@@ -12,16 +12,14 @@ import {
   IonSpinner,
   modalController,
 } from '@ionic/vue'
-import { chevronBackOutline, chevronForwardOutline, settingsOutline } from 'ionicons/icons'
+import { chevronBackOutline, chevronForwardOutline } from 'ionicons/icons'
 import { format, addMonths, subMonths } from 'date-fns'
 import { ko } from 'date-fns/locale'
-import { useRouter } from 'vue-router'
 import { useWorkout } from '@/composables/useWorkout'
 import type { DaySummary } from '@/entities/workout/types'
 import MonthGrid from '../components/MonthGrid.vue'
 import WorkoutModal from '@/features/workout-log/components/WorkoutModal.vue'
 
-const router = useRouter()
 const { fetchMonthSummary } = useWorkout()
 
 const currentDate = ref(new Date())
@@ -119,10 +117,6 @@ async function openWorkoutModal(date: string) {
   }
 }
 
-function openSettings() {
-  router.push('/settings')
-}
-
 watch([currentYear, currentMonth], loadMonthData)
 onMounted(loadMonthData)
 </script>
@@ -142,9 +136,6 @@ onMounted(loadMonthData)
         <ion-buttons slot="end">
           <ion-button @click="nextMonth">
             <ion-icon :icon="chevronForwardOutline" />
-          </ion-button>
-          <ion-button @click="openSettings">
-            <ion-icon :icon="settingsOutline" />
           </ion-button>
         </ion-buttons>
       </ion-toolbar>

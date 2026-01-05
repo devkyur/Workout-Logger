@@ -1,11 +1,12 @@
 import { createRouter, createWebHistory } from '@ionic/vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
+import TabsLayout from './TabsLayout.vue'
 
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    redirect: '/calendar',
+    redirect: '/tabs/home',
   },
   {
     path: '/login',
@@ -20,16 +21,44 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresGuest: true },
   },
   {
-    path: '/calendar',
-    name: 'Calendar',
-    component: () => import('@/features/calendar/views/CalendarView.vue'),
+    path: '/tabs/',
+    component: TabsLayout,
     meta: { requiresAuth: true },
+    children: [
+      {
+        path: '',
+        redirect: '/tabs/home',
+      },
+      {
+        path: 'home',
+        name: 'Home',
+        component: () => import('@/features/calendar/views/CalendarView.vue'),
+      },
+      {
+        path: 'stats',
+        name: 'Stats',
+        component: () => import('@/features/stats/views/StatsView.vue'),
+      },
+      {
+        path: 'menu',
+        name: 'Menu',
+        component: () => import('@/features/menu/views/MenuView.vue'),
+      },
+      {
+        path: 'settings',
+        name: 'Settings',
+        component: () => import('@/features/settings/views/SettingsView.vue'),
+      },
+    ],
+  },
+  // 기존 경로 호환성 유지
+  {
+    path: '/calendar',
+    redirect: '/tabs/home',
   },
   {
     path: '/settings',
-    name: 'Settings',
-    component: () => import('@/features/settings/views/SettingsView.vue'),
-    meta: { requiresAuth: true },
+    redirect: '/tabs/settings',
   },
 ]
 
@@ -47,10 +76,14 @@ router.beforeEach(async (to, _from, next) => {
     await new Promise((resolve) => setTimeout(resolve, 50))
   }
 
-  if (to.meta.requiresAuth && !isAuthenticated.value) {
+  // 부모 라우트의 meta도 확인
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
+  const requiresGuest = to.meta.requiresGuest
+
+  if (requiresAuth && !isAuthenticated.value) {
     next('/login')
-  } else if (to.meta.requiresGuest && isAuthenticated.value) {
-    next('/calendar')
+  } else if (requiresGuest && isAuthenticated.value) {
+    next('/tabs/home')
   } else {
     next()
   }

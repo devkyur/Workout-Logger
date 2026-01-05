@@ -7,16 +7,15 @@ import {
   IonTitle,
   IonContent,
   IonButtons,
-  IonBackButton,
+  IonButton,
   IonList,
   IonItem,
   IonLabel,
   IonSegment,
   IonSegmentButton,
-  IonButton,
   IonIcon,
 } from '@ionic/vue'
-import { logOutOutline } from 'ionicons/icons'
+import { logOutOutline, chevronBackOutline } from 'ionicons/icons'
 import { useRouter } from 'vue-router'
 import { useTheme, type ThemeMode } from '@/composables/useTheme'
 import { useAuth } from '@/composables/useAuth'
@@ -30,6 +29,10 @@ const selectedTheme = computed({
   set: (value: ThemeMode) => setTheme(value),
 })
 
+function goBack() {
+  router.back()
+}
+
 async function handleLogout() {
   await signOut()
   router.replace('/login')
@@ -41,7 +44,9 @@ async function handleLogout() {
     <ion-header>
       <ion-toolbar>
         <ion-buttons slot="start">
-          <ion-back-button default-href="/calendar" text="" />
+          <ion-button @click="goBack">
+            <ion-icon :icon="chevronBackOutline" slot="icon-only" />
+          </ion-button>
         </ion-buttons>
         <ion-title>설정</ion-title>
       </ion-toolbar>
