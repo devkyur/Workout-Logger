@@ -63,6 +63,7 @@ const VERTICAL_THRESHOLD = 75
 
 function onTouchStart(e: TouchEvent) {
   const touch = e.touches[0]
+  if (!touch) return
   swipeStartX.value = touch.clientX
   swipeStartY.value = touch.clientY
   isSwiping.value = true
@@ -72,6 +73,7 @@ function onTouchMove(e: TouchEvent) {
   if (!isSwiping.value) return
 
   const touch = e.touches[0]
+  if (!touch) return
   const deltaX = touch.clientX - swipeStartX.value
   const deltaY = Math.abs(touch.clientY - swipeStartY.value)
 
