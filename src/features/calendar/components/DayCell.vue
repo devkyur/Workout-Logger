@@ -7,6 +7,7 @@ interface Props {
   dayOfWeek: number // 0=일요일, 6=토요일
   isCurrentMonth: boolean
   isToday: boolean
+  isSelected?: boolean
   summary?: DaySummary
 }
 
@@ -23,6 +24,7 @@ const isSaturday = computed(() => props.dayOfWeek === 6)
     :class="{
       'other-month': !isCurrentMonth,
       'today': isToday,
+      'selected': isSelected && !isToday,
       'sunday': isSunday,
       'saturday': isSaturday,
     }"
@@ -60,6 +62,15 @@ const isSaturday = computed(() => props.dayOfWeek === 6)
 
 .day-cell.today .day-number {
   color: #fff;
+  font-weight: 600;
+}
+
+.day-cell.selected {
+  background: var(--ion-color-primary-tint);
+}
+
+.day-cell.selected .day-number {
+  color: var(--ion-color-primary-shade);
   font-weight: 600;
 }
 

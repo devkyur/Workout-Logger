@@ -17,6 +17,7 @@ interface Props {
   year: number
   month: number
   summary: DaySummary[]
+  selectedDate?: string | null
 }
 
 const props = defineProps<Props>()
@@ -85,6 +86,7 @@ function handleDateClick(dateStr: string) {
         :day-of-week="dayInfo.dayOfWeek"
         :is-current-month="dayInfo.isCurrentMonth"
         :is-today="dayInfo.isToday"
+        :is-selected="dayInfo.dateStr === selectedDate"
         :summary="dayInfo.summary"
         @click="handleDateClick(dayInfo.dateStr)"
       />
