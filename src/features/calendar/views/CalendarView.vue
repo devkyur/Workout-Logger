@@ -139,7 +139,6 @@ function animateToMonth(direction: 'prev' | 'next') {
 }
 
 // 스와이프 핸들러
-const SWIPE_THRESHOLD = 50
 const VERTICAL_THRESHOLD = 75
 
 function onTouchStart(e: TouchEvent) {
