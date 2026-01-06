@@ -24,7 +24,7 @@ const isSaturday = computed(() => props.dayOfWeek === 6)
     :class="{
       'other-month': !isCurrentMonth,
       'today': isToday,
-      'selected': isSelected && !isToday,
+      'selected': isSelected,
       'sunday': isSunday,
       'saturday': isSaturday,
     }"
@@ -45,39 +45,50 @@ const isSaturday = computed(() => props.dayOfWeek === 6)
   justify-content: center;
   position: relative;
   transition: background-color 0.15s;
-  border-radius: 50%;
 }
 
 .day-cell:active {
   background: var(--ion-color-light-shade);
+  border-radius: 50%;
 }
 
 .day-cell.other-month {
   opacity: 0.3;
 }
 
-.day-cell.today {
-  background: var(--ion-color-primary);
-}
-
-.day-cell.today .day-number {
-  color: #fff;
-  font-weight: 600;
-}
-
-.day-cell.selected {
-  background: var(--ion-color-primary-tint);
-}
-
-.day-cell.selected .day-number {
-  color: var(--ion-color-primary-shade);
-  font-weight: 600;
-}
-
 .day-number {
   font-size: 15px;
   font-weight: 400;
   color: var(--ion-text-color);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.15s;
+  line-height: 1;
+  padding-top: 1px; /* 시각적 중앙 보정 */
+  box-sizing: border-box;
+}
+
+/* 오늘: 흰색 배경 + 검은 글씨 */
+.day-cell.today .day-number {
+  background: #fff;
+  color: #000;
+  font-weight: 600;
+}
+
+/* 선택: 옅은 회색 배경 */
+.day-cell.selected .day-number {
+  background: rgba(255, 255, 255, 0.15);
+  font-weight: 500;
+}
+
+/* 오늘이면서 선택된 경우: 오늘 스타일 우선 */
+.day-cell.today.selected .day-number {
+  background: #fff;
+  color: #000;
 }
 
 .day-cell.sunday .day-number {
@@ -90,7 +101,16 @@ const isSaturday = computed(() => props.dayOfWeek === 6)
 
 .day-cell.today.sunday .day-number,
 .day-cell.today.saturday .day-number {
-  color: #fff;
+  color: #000;
+}
+
+.day-cell.selected.sunday .day-number,
+.day-cell.selected.saturday .day-number {
+  color: var(--ion-color-danger);
+}
+
+.day-cell.selected.saturday .day-number {
+  color: var(--ion-color-primary);
 }
 
 .workout-dot {
@@ -103,6 +123,6 @@ const isSaturday = computed(() => props.dayOfWeek === 6)
 }
 
 .day-cell.today .workout-dot {
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--ion-color-success);
 }
 </style>
