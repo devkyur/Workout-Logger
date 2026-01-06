@@ -50,6 +50,9 @@ const calendarDays = computed(() => {
   })
 })
 
+// 행 수 계산 (4, 5, 6줄)
+const rowCount = computed(() => Math.ceil(calendarDays.value.length / 7))
+
 function handleDateClick(dateStr: string) {
   emit('selectDate', dateStr)
 }
@@ -71,7 +74,10 @@ function handleDateClick(dateStr: string) {
       </div>
     </div>
 
-    <div class="days-grid">
+    <div
+      class="days-grid"
+      :class="`rows-${rowCount}`"
+    >
       <DayCell
         v-for="dayInfo in calendarDays"
         :key="dayInfo.dateStr"
@@ -121,6 +127,21 @@ function handleDateClick(dateStr: string) {
 .days-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
+  column-gap: 2px;
+  row-gap: 2px;
+  /* 5줄 기준 높이 고정 (셀 높이는 컨테이너 너비/7 기준) */
+  --cell-size: calc((100vw - 56px) / 7); /* 100vw - padding(16*2) - margin(12*2) */
+  height: calc(var(--cell-size) * 5 + 2px * 4);
+  align-content: start;
+}
+
+/* 4줄: 행 간격 넓혀서 균등 분포 */
+.days-grid.rows-4 {
+  row-gap: calc((var(--cell-size) + 8px) / 3);
+}
+
+/* 6줄: gap 줄여서 맞춤 */
+.days-grid.rows-6 {
+  row-gap: 0;
 }
 </style>

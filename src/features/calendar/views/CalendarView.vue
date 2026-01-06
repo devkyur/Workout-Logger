@@ -24,13 +24,21 @@ const { fetchMonthSummary } = useWorkout()
 
 const currentDate = ref(new Date())
 const loading = ref(false)
-const monthlySummary = ref<DaySummary[]>([])
+
+// 3개월 데이터 (이전, 현재, 다음)
+const prevMonthSummary = ref<DaySummary[]>([])
+const currentMonthSummary = ref<DaySummary[]>([])
+const nextMonthSummary = ref<DaySummary[]>([])
 
 // 스와이프 관련 상태
 const swipeStartX = ref(0)
 const swipeStartY = ref(0)
 const swipeOffset = ref(0)
 const isSwiping = ref(false)
+const isAnimating = ref(false)
+
+// 컨테이너 너비 (CSS의 100vw와 일치)
+const containerWidth = computed(() => window.innerWidth)
 
 const currentYear = computed(() => currentDate.value.getFullYear())
 const currentMonth = computed(() => currentDate.value.getMonth() + 1)
@@ -38,10 +46,37 @@ const monthTitle = computed(() =>
   format(currentDate.value, 'yyyy년 M월', { locale: ko })
 )
 
-async function loadMonthData() {
+// 이전/다음 월 계산
+const prevDate = computed(() => subMonths(currentDate.value, 1))
+const nextDate = computed(() => addMonths(currentDate.value, 1))
+
+const prevYear = computed(() => prevDate.value.getFullYear())
+const prevMonthNum = computed(() => prevDate.value.getMonth() + 1)
+const nextYear = computed(() => nextDate.value.getFullYear())
+const nextMonthNum = computed(() => nextDate.value.getMonth() + 1)
+
+// 슬라이더 transform 계산
+const sliderTransform = computed(() => {
+  const baseOffset = -containerWidth.value // 중앙(현재 월)에서 시작
+  const dragOffset = isSwiping.value ? swipeOffset.value : 0
+  return `translateX(${baseOffset + dragOffset}px)`
+})
+
+const sliderTransition = computed(() => {
+  return isSwiping.value ? 'none' : 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+})
+
+async function loadAllMonthsData() {
   loading.value = true
   try {
-    monthlySummary.value = await fetchMonthSummary(currentYear.value, currentMonth.value)
+    const [prev, current, next] = await Promise.all([
+      fetchMonthSummary(prevYear.value, prevMonthNum.value),
+      fetchMonthSummary(currentYear.value, currentMonth.value),
+      fetchMonthSummary(nextYear.value, nextMonthNum.value),
+    ])
+    prevMonthSummary.value = prev
+    currentMonthSummary.value = current
+    nextMonthSummary.value = next
   } catch (e) {
     console.error('Failed to load month data:', e)
   } finally {
@@ -49,12 +84,58 @@ async function loadMonthData() {
   }
 }
 
+async function shiftToPrevMonth() {
+  // 다음 → 현재, 현재 → 이전으로 데이터 이동
+  nextMonthSummary.value = currentMonthSummary.value
+  currentMonthSummary.value = prevMonthSummary.value
+
+  // 새로운 이전 월 데이터 fetch (currentDate가 이미 변경된 상태)
+  prevMonthSummary.value = await fetchMonthSummary(
+    prevYear.value,
+    prevMonthNum.value
+  )
+}
+
+async function shiftToNextMonth() {
+  // 이전 → 현재, 현재 → 다음으로 데이터 이동
+  prevMonthSummary.value = currentMonthSummary.value
+  currentMonthSummary.value = nextMonthSummary.value
+
+  // 새로운 다음 월 데이터 fetch (currentDate가 이미 변경된 상태)
+  nextMonthSummary.value = await fetchMonthSummary(
+    nextYear.value,
+    nextMonthNum.value
+  )
+}
+
 function prevMonth() {
-  currentDate.value = subMonths(currentDate.value, 1)
+  if (isAnimating.value) return
+  animateToMonth('prev')
 }
 
 function nextMonth() {
-  currentDate.value = addMonths(currentDate.value, 1)
+  if (isAnimating.value) return
+  animateToMonth('next')
+}
+
+function animateToMonth(direction: 'prev' | 'next') {
+  isAnimating.value = true
+
+  // 애니메이션으로 이동
+  swipeOffset.value = direction === 'prev' ? containerWidth.value : -containerWidth.value
+  isSwiping.value = false // transition 활성화
+
+  setTimeout(async () => {
+    if (direction === 'prev') {
+      currentDate.value = subMonths(currentDate.value, 1)
+      await shiftToPrevMonth()
+    } else {
+      currentDate.value = addMonths(currentDate.value, 1)
+      await shiftToNextMonth()
+    }
+    swipeOffset.value = 0
+    isAnimating.value = false
+  }, 300)
 }
 
 // 스와이프 핸들러
@@ -62,6 +143,8 @@ const SWIPE_THRESHOLD = 50
 const VERTICAL_THRESHOLD = 75
 
 function onTouchStart(e: TouchEvent) {
+  if (isAnimating.value) return
+
   const touch = e.touches[0]
   swipeStartX.value = touch.clientX
   swipeStartY.value = touch.clientY
@@ -69,7 +152,7 @@ function onTouchStart(e: TouchEvent) {
 }
 
 function onTouchMove(e: TouchEvent) {
-  if (!isSwiping.value) return
+  if (!isSwiping.value || isAnimating.value) return
 
   const touch = e.touches[0]
   const deltaX = touch.clientX - swipeStartX.value
@@ -82,23 +165,29 @@ function onTouchMove(e: TouchEvent) {
     return
   }
 
-  swipeOffset.value = deltaX
+  // 저항감 추가 (끝에서 당길 때)
+  const resistance = 0.8
+  swipeOffset.value = deltaX * resistance
 }
 
 function onTouchEnd() {
-  if (!isSwiping.value) {
+  if (!isSwiping.value || isAnimating.value) {
     swipeOffset.value = 0
+    isSwiping.value = false
     return
   }
 
-  if (swipeOffset.value > SWIPE_THRESHOLD) {
-    prevMonth()
-  } else if (swipeOffset.value < -SWIPE_THRESHOLD) {
-    nextMonth()
-  }
+  const threshold = containerWidth.value * 0.2 // 20% 이상 스와이프하면 전환
 
-  swipeOffset.value = 0
-  isSwiping.value = false
+  if (swipeOffset.value > threshold) {
+    animateToMonth('prev')
+  } else if (swipeOffset.value < -threshold) {
+    animateToMonth('next')
+  } else {
+    // 원래 위치로 돌아가기
+    isSwiping.value = false
+    swipeOffset.value = 0
+  }
 }
 
 async function openWorkoutModal(date: string) {
@@ -113,12 +202,11 @@ async function openWorkoutModal(date: string) {
 
   const { role } = await modal.onWillDismiss()
   if (role === 'saved') {
-    await loadMonthData()
+    await loadAllMonthsData()
   }
 }
 
-watch([currentYear, currentMonth], loadMonthData)
-onMounted(loadMonthData)
+onMounted(loadAllMonthsData)
 </script>
 
 <template>
@@ -126,7 +214,7 @@ onMounted(loadMonthData)
     <ion-header>
       <ion-toolbar>
         <ion-buttons slot="start">
-          <ion-button @click="prevMonth">
+          <ion-button @click="prevMonth" :disabled="isAnimating">
             <ion-icon :icon="chevronBackOutline" />
           </ion-button>
         </ion-buttons>
@@ -134,7 +222,7 @@ onMounted(loadMonthData)
         <ion-title>{{ monthTitle }}</ion-title>
 
         <ion-buttons slot="end">
-          <ion-button @click="nextMonth">
+          <ion-button @click="nextMonth" :disabled="isAnimating">
             <ion-icon :icon="chevronForwardOutline" />
           </ion-button>
         </ion-buttons>
@@ -142,7 +230,7 @@ onMounted(loadMonthData)
     </ion-header>
 
     <ion-content>
-      <div v-if="loading" class="loading-container">
+      <div v-if="loading && !currentMonthSummary.length" class="loading-container">
         <ion-spinner name="crescent" />
       </div>
 
@@ -152,14 +240,44 @@ onMounted(loadMonthData)
         @touchstart="onTouchStart"
         @touchmove="onTouchMove"
         @touchend="onTouchEnd"
-        :style="{ transform: `translateX(${swipeOffset * 0.3}px)` }"
       >
-        <MonthGrid
-          :year="currentYear"
-          :month="currentMonth"
-          :summary="monthlySummary"
-          @select-date="openWorkoutModal"
-        />
+        <div
+          class="months-slider"
+          :style="{
+            transform: sliderTransform,
+            transition: sliderTransition,
+          }"
+        >
+          <!-- 이전 월 -->
+          <div class="month-panel">
+            <MonthGrid
+              :year="prevYear"
+              :month="prevMonthNum"
+              :summary="prevMonthSummary"
+              @select-date="openWorkoutModal"
+            />
+          </div>
+
+          <!-- 현재 월 -->
+          <div class="month-panel">
+            <MonthGrid
+              :year="currentYear"
+              :month="currentMonth"
+              :summary="currentMonthSummary"
+              @select-date="openWorkoutModal"
+            />
+          </div>
+
+          <!-- 다음 월 -->
+          <div class="month-panel">
+            <MonthGrid
+              :year="nextYear"
+              :month="nextMonthNum"
+              :summary="nextMonthSummary"
+              @select-date="openWorkoutModal"
+            />
+          </div>
+        </div>
       </div>
     </ion-content>
   </ion-page>
@@ -174,7 +292,19 @@ onMounted(loadMonthData)
 }
 
 .swipe-container {
-  transition: transform 0.1s ease-out;
+  overflow: hidden;
+  width: 100%;
+  touch-action: pan-y;
+}
+
+.months-slider {
+  display: flex;
   will-change: transform;
+}
+
+.month-panel {
+  width: 100vw;
+  flex-shrink: 0;
+  box-sizing: border-box;
 }
 </style>
