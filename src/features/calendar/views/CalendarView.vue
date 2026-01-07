@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
+import { ref, computed, onMounted, watch, onUnmounted, nextTick } from 'vue'
 import {
   IonPage,
   IonHeader,
@@ -81,15 +81,17 @@ const nextMonthNum = computed(() => nextDate.value.getMonth() + 1)
 // 월 슬라이더 transform
 const monthSliderTransform = computed(() => {
   const baseOffset = -containerWidth.value
-  if (swipeDirection.value === 'horizontal' && isTouching.value) {
+  // 수평 스와이프 중이거나 애니메이션 중일 때 touchDeltaX 적용
+  if (swipeDirection.value === 'horizontal') {
     return `translateX(${baseOffset + touchDeltaX.value}px)`
   }
   return `translateX(${baseOffset}px)`
 })
 
 const monthSliderTransition = computed(() => {
-  if (isTouching.value && swipeDirection.value === 'horizontal') return 'none'
-  return 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+  // 터치 중이면 트랜지션 없음 (드래그 따라가기 + 리셋 시 점프 방지)
+  if (isTouching.value) return 'none'
+  return 'transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
 })
 
 // 패널 transform (캘린더를 덮는 효과)
@@ -173,24 +175,59 @@ function nextMonth() {
   animateToMonth('next')
 }
 
-function animateToMonth(direction: 'prev' | 'next') {
+async function animateToMonth(direction: 'prev' | 'next') {
   isAnimating.value = true
-  touchDeltaX.value = direction === 'prev' ? containerWidth.value : -containerWidth.value
   swipeDirection.value = 'horizontal'
-  isTouching.value = false
 
-  setTimeout(async () => {
-    if (direction === 'prev') {
-      currentDate.value = subMonths(currentDate.value, 1)
-      await shiftToPrevMonth()
-    } else {
-      currentDate.value = addMonths(currentDate.value, 1)
-      await shiftToNextMonth()
-    }
-    touchDeltaX.value = 0
-    swipeDirection.value = 'none'
-    isAnimating.value = false
-  }, 300)
+  // 1. 트랜지션 활성화 후 목표 위치로 애니메이션
+  isTouching.value = false
+  await nextTick()
+
+  const targetX = direction === 'prev' ? containerWidth.value : -containerWidth.value
+  touchDeltaX.value = targetX
+
+  // 2. 애니메이션 완료 후 데이터만 shift (위치는 그대로 유지)
+  setTimeout(() => {
+    // 트랜지션 비활성화
+    isTouching.value = true
+
+    // 브라우저가 transition: none을 적용할 때까지 대기 (double rAF)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        // 데이터 shift (동기적으로 처리)
+        if (direction === 'prev') {
+          nextMonthSummary.value = currentMonthSummary.value
+          currentMonthSummary.value = prevMonthSummary.value
+          currentDate.value = subMonths(currentDate.value, 1)
+        } else {
+          prevMonthSummary.value = currentMonthSummary.value
+          currentMonthSummary.value = nextMonthSummary.value
+          currentDate.value = addMonths(currentDate.value, 1)
+        }
+
+        // 위치 리셋 (transition: none 상태이므로 즉시 이동, 시각적 변화 없음)
+        touchDeltaX.value = 0
+        swipeDirection.value = 'none'
+
+        // 백그라운드에서 새 월 데이터 fetch
+        if (direction === 'prev') {
+          fetchMonthSummary(prevYear.value, prevMonthNum.value).then(data => {
+            prevMonthSummary.value = data
+          })
+        } else {
+          fetchMonthSummary(nextYear.value, nextMonthNum.value).then(data => {
+            nextMonthSummary.value = data
+          })
+        }
+
+        // 상태 정리
+        requestAnimationFrame(() => {
+          isTouching.value = false
+          isAnimating.value = false
+        })
+      })
+    })
+  }, 350)
 }
 
 // 통합 터치 핸들러
@@ -232,7 +269,7 @@ function onTouchMove(e: TouchEvent) {
   }
 
   if (swipeDirection.value === 'horizontal') {
-    touchDeltaX.value = deltaX * 0.8
+    touchDeltaX.value = deltaX // 1:1 슬라이드 (저항 없음)
   } else if (swipeDirection.value === 'vertical') {
     touchDeltaY.value = deltaY
   }
@@ -244,7 +281,7 @@ function onTouchEnd() {
     return
   }
 
-  const SWIPE_THRESHOLD = containerWidth.value * 0.2
+  const SWIPE_THRESHOLD = containerWidth.value * 0.5 // 50% 이상 넘겨야 월 변경
   const VERTICAL_THRESHOLD = 80
 
   if (swipeDirection.value === 'horizontal') {
