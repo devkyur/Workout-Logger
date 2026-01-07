@@ -10,7 +10,6 @@ import {
   IonButton,
   IonIcon,
   IonSpinner,
-  modalController,
 } from '@ionic/vue'
 import { chevronBackOutline, chevronForwardOutline, arrowBackOutline } from 'ionicons/icons'
 import { format, addMonths, subMonths, parseISO } from 'date-fns'
@@ -19,7 +18,6 @@ import { useWorkout } from '@/composables/useWorkout'
 import type { DaySummary, WorkoutSessionWithExercises } from '@/entities/workout/types'
 import MonthGrid from '../components/MonthGrid.vue'
 import DaySummaryPanel from '../components/DaySummaryPanel.vue'
-import WorkoutModal from '@/features/workout-log/components/WorkoutModal.vue'
 
 const { fetchMonthSummary, fetchDaySession } = useWorkout()
 
@@ -51,6 +49,9 @@ const isAnimating = ref(false)
 // 캘린더 높이 (동적 계산)
 const calendarRef = ref<HTMLElement | null>(null)
 const calendarHeight = ref(0)
+
+// 패널 섹션 ref (스크롤 위치 확인용)
+const panelSectionRef = ref<HTMLElement | null>(null)
 
 // 패널 위치 (0 = 기본 위치, calendarHeight = 완전 확장)
 const panelOffsetY = ref(0)
@@ -145,24 +146,6 @@ async function loadSelectedDateSession() {
   } finally {
     sessionLoading.value = false
   }
-}
-
-async function shiftToPrevMonth() {
-  nextMonthSummary.value = currentMonthSummary.value
-  currentMonthSummary.value = prevMonthSummary.value
-  prevMonthSummary.value = await fetchMonthSummary(
-    prevYear.value,
-    prevMonthNum.value
-  )
-}
-
-async function shiftToNextMonth() {
-  prevMonthSummary.value = currentMonthSummary.value
-  currentMonthSummary.value = nextMonthSummary.value
-  nextMonthSummary.value = await fetchMonthSummary(
-    nextYear.value,
-    nextMonthNum.value
-  )
 }
 
 function prevMonth() {
@@ -354,6 +337,12 @@ function onPanelTouchEnd() {
 function onExpandedTouchStart(e: TouchEvent) {
   if (isAnimating.value) return
 
+  // 스크롤이 맨 위가 아니면 축소 제스처 비활성화 (일반 스크롤 허용)
+  const panelElement = panelSectionRef.value?.querySelector('.day-summary-panel')
+  if (panelElement && panelElement.scrollTop > 0) {
+    return
+  }
+
   const touch = e.touches[0]
   if (!touch) return
 
@@ -396,23 +385,13 @@ function handleDateSelect(date: string) {
   selectedDate.value = date
 }
 
-async function openWorkoutModal() {
-  if (!selectedDate.value) return
+function expandPanel() {
+  panelMode.value = 'expanded'
+}
 
-  const modal = await modalController.create({
-    component: WorkoutModal,
-    componentProps: { date: selectedDate.value },
-    breakpoints: [0, 0.5, 0.9],
-    initialBreakpoint: 0.9,
-  })
-
-  await modal.present()
-
-  const { role } = await modal.onWillDismiss()
-  if (role === 'saved') {
-    await loadAllMonthsData()
-    await loadSelectedDateSession()
-  }
+async function handleRefresh() {
+  await loadAllMonthsData()
+  await loadSelectedDateSession()
 }
 
 function updateCalendarHeight() {
@@ -544,6 +523,7 @@ onUnmounted(() => {
 
           <!-- 하단 패널 -->
           <div
+            ref="panelSectionRef"
             class="panel-section"
             :class="{ expanded: panelMode === 'expanded' }"
             @touchstart="panelMode === 'normal' ? onPanelTouchStart($event) : onExpandedTouchStart($event)"
@@ -555,8 +535,8 @@ onUnmounted(() => {
               :session="selectedSession"
               :loading="sessionLoading"
               :expanded="panelMode === 'expanded'"
-              @open-modal="openWorkoutModal"
-              @add-workout="openWorkoutModal"
+              @expand="expandPanel"
+              @refresh="handleRefresh"
             />
           </div>
         </div>

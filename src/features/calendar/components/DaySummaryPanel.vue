@@ -1,10 +1,26 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { IonButton, IonIcon, IonSpinner } from '@ionic/vue'
-import { addOutline, chevronForwardOutline } from 'ionicons/icons'
+import {
+  IonButton,
+  IonIcon,
+  IonSpinner,
+  IonCard,
+  IonCardHeader,
+  IonCardTitle,
+  IonCardContent,
+  modalController,
+  toastController,
+  alertController,
+} from '@ionic/vue'
+import { addOutline, chevronForwardOutline, trashOutline } from 'ionicons/icons'
 import { format, parseISO, isToday } from 'date-fns'
 import { ko } from 'date-fns/locale'
-import type { WorkoutSessionWithExercises } from '@/entities/workout/types'
+import { useWorkout } from '@/composables/useWorkout'
+import { useAuth } from '@/composables/useAuth'
+import { supabase } from '@/shared/lib/supabase'
+import type { WorkoutSessionWithExercises, SessionExerciseWithSets } from '@/entities/workout/types'
+import ExerciseSelector from '@/features/exercise-selector/components/ExerciseSelector.vue'
+import SetInputModal from '@/features/workout-log/components/SetInputModal.vue'
 
 interface Props {
   selectedDate: string | null
@@ -15,9 +31,18 @@ interface Props {
 
 const props = defineProps<Props>()
 const emit = defineEmits<{
-  openModal: []
-  addWorkout: []
+  expand: []
+  refresh: []
 }>()
+
+const { user } = useAuth()
+const {
+  getOrCreateSession,
+  addExerciseToSession,
+  deleteSessionExercise,
+  deleteEmptySession,
+  updateExerciseSets,
+} = useWorkout()
 
 const formattedDate = computed(() => {
   if (!props.selectedDate) return ''
@@ -51,6 +76,11 @@ const totalVolume = computed(() => {
   }, 0)
 })
 
+// 해당 날짜에 이미 기록된 운동 ID 목록
+const existingExerciseIds = computed(
+  () => new Set(props.session?.exercises.map((e) => e.exercise_id) ?? [])
+)
+
 // 세트 표시 포맷
 function formatSet(set: { weight?: number | null; reps?: number | null; duration_seconds?: number | null }) {
   if (set.duration_seconds) {
@@ -59,6 +89,188 @@ function formatSet(set: { weight?: number | null; reps?: number | null; duration
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
   return `${set.weight ?? '-'}kg × ${set.reps ?? '-'}회`
+}
+
+// 운동별 볼륨 계산
+function getExerciseVolume(exercise: SessionExerciseWithSets): number {
+  return exercise.sets.reduce((acc, set) => {
+    if (set.weight && set.reps) {
+      return acc + set.weight * set.reps
+    }
+    return acc
+  }, 0)
+}
+
+// 운동 선택 모달 열기
+async function openExerciseSelector() {
+  const modal = await modalController.create({
+    component: ExerciseSelector,
+    componentProps: {
+      existingExerciseIds: existingExerciseIds.value,
+    },
+  })
+
+  await modal.present()
+
+  const { data, role } = await modal.onWillDismiss()
+
+  if (role === 'select' && data) {
+    await handleExerciseSelected(data)
+  }
+}
+
+// 운동 선택 후 세트 입력
+async function handleExerciseSelected(exerciseId: number) {
+  if (!props.selectedDate) return
+
+  const existingExercise = props.session?.exercises.find(
+    (e) => e.exercise_id === exerciseId
+  )
+
+  const modal = await modalController.create({
+    component: SetInputModal,
+    componentProps: {
+      exerciseId,
+      existingSets: existingExercise?.sets ?? [],
+      isAddingToExisting: !!existingExercise,
+      currentDate: props.selectedDate,
+    },
+    breakpoints: [0, 0.75],
+    initialBreakpoint: 0.75,
+  })
+
+  await modal.present()
+
+  const { data, role } = await modal.onWillDismiss()
+
+  if (role === 'save' && data) {
+    try {
+      let currentSession = props.session
+      if (!currentSession) {
+        const newSession = await getOrCreateSession(user.value!.id, props.selectedDate)
+        currentSession = { ...newSession, exercises: [] }
+      }
+
+      await addExerciseToSession(
+        currentSession.id,
+        exerciseId,
+        data.sets,
+        data.memo || null
+      )
+
+      const toast = await toastController.create({
+        message: existingExercise ? '세트가 추가되었습니다' : '운동이 기록되었습니다',
+        duration: 1500,
+        color: 'success',
+      })
+      await toast.present()
+
+      emit('refresh')
+    } catch (e: any) {
+      const toast = await toastController.create({
+        message: e.message || '저장에 실패했습니다',
+        duration: 2000,
+        color: 'danger',
+      })
+      await toast.present()
+    }
+  }
+}
+
+// 운동 수정
+async function handleEditExercise(sessionExercise: SessionExerciseWithSets, event: Event) {
+  event.stopPropagation()
+  if (!props.selectedDate) return
+
+  const modal = await modalController.create({
+    component: SetInputModal,
+    componentProps: {
+      exerciseId: sessionExercise.exercise_id,
+      existingSets: sessionExercise.sets,
+      existingMemo: sessionExercise.memo,
+      isEditMode: true,
+      currentDate: props.selectedDate,
+    },
+    breakpoints: [0, 0.75],
+    initialBreakpoint: 0.75,
+  })
+
+  await modal.present()
+
+  const { data, role } = await modal.onWillDismiss()
+
+  if (role === 'save' && data) {
+    try {
+      await updateExerciseSets(sessionExercise.id, data.sets)
+
+      if (data.memo !== sessionExercise.memo) {
+        const { error } = await supabase
+          .from('session_exercises')
+          .update({ memo: data.memo || null })
+          .eq('id', sessionExercise.id)
+        if (error) throw error
+      }
+
+      const toast = await toastController.create({
+        message: '수정되었습니다',
+        duration: 1500,
+        color: 'success',
+      })
+      await toast.present()
+
+      emit('refresh')
+    } catch (e: any) {
+      const toast = await toastController.create({
+        message: e.message || '수정에 실패했습니다',
+        duration: 2000,
+        color: 'danger',
+      })
+      await toast.present()
+    }
+  }
+}
+
+// 운동 삭제
+async function handleDeleteExercise(sessionExerciseId: number, event: Event) {
+  event.stopPropagation()
+
+  const alert = await alertController.create({
+    header: '삭제 확인',
+    message: '이 운동 기록을 삭제하시겠습니까?',
+    buttons: [
+      { text: '취소', role: 'cancel' },
+      {
+        text: '삭제',
+        role: 'destructive',
+        handler: async () => {
+          try {
+            await deleteSessionExercise(sessionExerciseId)
+
+            if (props.session) {
+              await deleteEmptySession(props.session.id)
+            }
+
+            const toast = await toastController.create({
+              message: '삭제되었습니다',
+              duration: 1500,
+            })
+            await toast.present()
+
+            emit('refresh')
+          } catch (e: any) {
+            const toast = await toastController.create({
+              message: '삭제에 실패했습니다',
+              duration: 2000,
+              color: 'danger',
+            })
+            await toast.present()
+          }
+        },
+      },
+    ],
+  })
+
+  await alert.present()
 }
 </script>
 
@@ -82,7 +294,7 @@ function formatSet(set: { weight?: number | null; reps?: number | null; duration
           <span class="date">{{ formattedDate }}</span>
         </div>
 
-        <div class="workout-summary" @click="emit('openModal')">
+        <div class="workout-summary" @click="emit('expand')">
           <p class="exercises">{{ exerciseSummary }}</p>
 
           <div class="stats">
@@ -98,39 +310,59 @@ function formatSet(set: { weight?: number | null; reps?: number | null; duration
         </div>
       </template>
 
-      <!-- 확장 모드 - 상세 뷰 -->
+      <!-- 확장 모드 - 상세 뷰 (CRUD 기능 포함) -->
       <template v-else>
         <div class="expanded-content">
-          <div
+          <!-- 총 볼륨 표시 -->
+          <div v-if="totalVolume > 0" class="total-volume-header">
+            총 볼륨: {{ totalVolume.toLocaleString() }}kg
+          </div>
+
+          <!-- 운동 카드 목록 -->
+          <ion-card
             v-for="exercise in session!.exercises"
             :key="exercise.id"
-            class="exercise-card"
-            @click="emit('openModal')"
+            class="workout-card"
+            button
+            @click="handleEditExercise(exercise, $event)"
           >
-            <div class="exercise-header">
-              <h3 class="exercise-name">{{ exercise.exercise?.name ?? '알 수 없음' }}</h3>
-            </div>
-
-            <div class="sets-container">
-              <div
-                v-for="(set, index) in exercise.sets"
-                :key="set.id"
-                class="set-item"
-              >
-                <span class="set-number">{{ index + 1 }}</span>
-                <span class="set-value">{{ formatSet(set) }}</span>
+            <ion-card-header>
+              <div class="card-header-content">
+                <ion-card-title class="exercise-name">
+                  {{ exercise.exercise?.name ?? '알 수 없음' }}
+                </ion-card-title>
+                <ion-button fill="clear" color="danger" size="small" @click="handleDeleteExercise(exercise.id, $event)">
+                  <ion-icon :icon="trashOutline" />
+                </ion-button>
               </div>
-            </div>
+            </ion-card-header>
 
-            <p v-if="exercise.memo" class="memo">{{ exercise.memo }}</p>
-          </div>
+            <ion-card-content>
+              <div class="sets-container">
+                <div
+                  v-for="(set, index) in exercise.sets"
+                  :key="set.id"
+                  class="set-item"
+                >
+                  <span class="set-number">{{ index + 1 }}</span>
+                  <span class="set-value">{{ formatSet(set) }}</span>
+                </div>
+              </div>
+
+              <div v-if="getExerciseVolume(exercise) > 0" class="exercise-volume">
+                볼륨: {{ getExerciseVolume(exercise).toLocaleString() }}kg
+              </div>
+
+              <p v-if="exercise.memo" class="memo">{{ exercise.memo }}</p>
+            </ion-card-content>
+          </ion-card>
 
           <!-- 운동 추가 버튼 -->
           <ion-button
             expand="block"
             fill="outline"
             class="add-button"
-            @click="emit('addWorkout')"
+            @click="openExerciseSelector"
           >
             <ion-icon slot="start" :icon="addOutline" />
             운동 추가
@@ -149,7 +381,7 @@ function formatSet(set: { weight?: number | null; reps?: number | null; duration
 
       <div class="no-workout">
         <p>기록된 운동이 없어요</p>
-        <ion-button fill="outline" size="default" @click="emit('addWorkout')">
+        <ion-button fill="outline" size="default" @click="openExerciseSelector">
           <ion-icon slot="start" :icon="addOutline" />
           운동 기록하기
         </ion-button>
@@ -175,6 +407,8 @@ function formatSet(set: { weight?: number | null; reps?: number | null; duration
   min-height: auto;
   flex: 1;
   box-shadow: none;
+  overflow-y: auto;
+  max-height: calc(100vh - 120px); /* 헤더 + 드래그핸들 높이 제외 */
 }
 
 .empty-state,
@@ -253,31 +487,31 @@ function formatSet(set: { weight?: number | null; reps?: number | null; duration
 
 /* 확장 모드 스타일 */
 .expanded-content {
-  padding-bottom: 20px;
+  padding-bottom: 80px;
 }
 
-.exercise-card {
-  background: var(--ion-color-light);
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 12px;
-  cursor: pointer;
-  transition: background-color 0.15s;
+.total-volume-header {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ion-color-primary-contrast);
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: var(--ion-color-primary);
+  border-radius: 8px;
 }
 
-.exercise-card:active {
-  background: var(--ion-color-light-shade);
+.workout-card {
+  margin: 0 0 12px;
 }
 
-.exercise-header {
-  margin-bottom: 12px;
+.card-header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .exercise-name {
   font-size: 16px;
-  font-weight: 600;
-  margin: 0;
-  color: var(--ion-text-color);
 }
 
 .sets-container {
@@ -291,7 +525,7 @@ function formatSet(set: { weight?: number | null; reps?: number | null; duration
   display: flex;
   align-items: center;
   gap: 6px;
-  background: var(--ion-background-color);
+  background: var(--ion-color-light);
   padding: 6px 10px;
   border-radius: 6px;
   font-size: 13px;
@@ -306,12 +540,18 @@ function formatSet(set: { weight?: number | null; reps?: number | null; duration
   font-weight: 500;
 }
 
+.exercise-volume {
+  font-size: 12px;
+  color: var(--ion-color-primary);
+  margin-bottom: 8px;
+}
+
 .memo {
   font-size: 13px;
   color: var(--ion-color-medium);
-  margin: 8px 0 0;
+  margin: 0;
   padding-top: 8px;
-  border-top: 1px solid var(--ion-color-medium-tint);
+  border-top: 1px solid var(--ion-color-light);
 }
 
 .add-button {
