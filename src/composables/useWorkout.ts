@@ -287,6 +287,59 @@ export function useWorkout() {
     if (error) throw error
   }
 
+  // 세션 복사 (과거 기록을 특정 날짜로 복사)
+  async function copySessionToDate(
+    userId: string,
+    sourceSession: WorkoutSessionWithExercises,
+    targetDate: string
+  ): Promise<void> {
+    // 대상 날짜에 세션 생성 또는 조회
+    const targetSession = await getOrCreateSession(userId, targetDate)
+
+    // 기존 세션의 최대 order_num 조회
+    const { data: existingExercises } = await supabase
+      .from('session_exercises')
+      .select('order_num')
+      .eq('session_id', targetSession.id)
+      .order('order_num', { ascending: false })
+      .limit(1)
+
+    let orderNum = (existingExercises?.[0]?.order_num ?? 0)
+
+    // 각 운동을 복사
+    for (const exercise of sourceSession.exercises) {
+      orderNum++
+
+      // 세션 운동 추가
+      const { data: newExercise, error: exError } = await supabase
+        .from('session_exercises')
+        .insert({
+          session_id: targetSession.id,
+          exercise_id: exercise.exercise_id,
+          order_num: orderNum,
+          memo: exercise.memo || null,
+        })
+        .select()
+        .single()
+
+      if (exError) throw exError
+
+      // 세트 복사
+      if (exercise.sets.length > 0) {
+        const copiedSets = exercise.sets.map((set, idx) => ({
+          session_exercise_id: newExercise.id,
+          set_number: idx + 1,
+          weight: set.weight,
+          reps: set.reps,
+          duration_seconds: set.duration_seconds,
+        }))
+
+        const { error: setsError } = await supabase.from('exercise_sets').insert(copiedSets)
+        if (setsError) throw setsError
+      }
+    }
+  }
+
   // 특정 운동의 이전 기록 조회 (가장 최근 기록)
   async function fetchPreviousExerciseRecord(
     exerciseId: number,
@@ -349,5 +402,6 @@ export function useWorkout() {
     updateExerciseSets,
     updateSessionMemo,
     fetchPreviousExerciseRecord,
+    copySessionToDate,
   }
 }

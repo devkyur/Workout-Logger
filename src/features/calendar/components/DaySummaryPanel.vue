@@ -12,8 +12,8 @@ import {
   toastController,
   alertController,
 } from '@ionic/vue'
-import { addOutline, chevronForwardOutline, trashOutline } from 'ionicons/icons'
-import { format, parseISO, isToday } from 'date-fns'
+import { addOutline, chevronForwardOutline, trashOutline, copyOutline } from 'ionicons/icons'
+import { format, parseISO, isToday as isTodayFn } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import { useWorkout } from '@/composables/useWorkout'
 import { useAuth } from '@/composables/useAuth'
@@ -33,6 +33,7 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   expand: []
   refresh: []
+  copyToToday: []
 }>()
 
 const { user } = useAuth()
@@ -42,13 +43,20 @@ const {
   deleteSessionExercise,
   deleteEmptySession,
   updateExerciseSets,
+  copySessionToDate,
 } = useWorkout()
 
 const formattedDate = computed(() => {
   if (!props.selectedDate) return ''
   const date = parseISO(props.selectedDate)
   const dateStr = format(date, 'M월 d일 (EEEE)', { locale: ko })
-  return isToday(date) ? `${dateStr} · 오늘` : dateStr
+  return isTodayFn(date) ? `${dateStr} · 오늘` : dateStr
+})
+
+// 선택된 날짜가 오늘인지 확인
+const isToday = computed(() => {
+  if (!props.selectedDate) return false
+  return isTodayFn(parseISO(props.selectedDate))
 })
 
 const hasWorkout = computed(() =>
@@ -230,6 +238,33 @@ async function handleEditExercise(sessionExercise: SessionExerciseWithSets, even
   }
 }
 
+// 오늘 운동으로 복사
+async function handleCopyToToday() {
+  if (!props.session || !user.value) return
+
+  const today = format(new Date(), 'yyyy-MM-dd')
+
+  try {
+    await copySessionToDate(user.value.id, props.session, today)
+
+    const toast = await toastController.create({
+      message: '오늘 운동으로 복사되었습니다',
+      duration: 1500,
+      color: 'success',
+    })
+    await toast.present()
+
+    emit('copyToToday')
+  } catch (e: any) {
+    const toast = await toastController.create({
+      message: e.message || '복사에 실패했습니다',
+      duration: 2000,
+      color: 'danger',
+    })
+    await toast.present()
+  }
+}
+
 // 운동 삭제
 async function handleDeleteExercise(sessionExerciseId: number, event: Event) {
   event.stopPropagation()
@@ -357,16 +392,32 @@ async function handleDeleteExercise(sessionExerciseId: number, event: Event) {
             </ion-card-content>
           </ion-card>
 
-          <!-- 운동 추가 버튼 -->
-          <ion-button
-            expand="block"
-            fill="outline"
-            class="add-button"
-            @click="openExerciseSelector"
-          >
-            <ion-icon slot="start" :icon="addOutline" />
-            운동 추가
-          </ion-button>
+          <!-- 버튼 그룹 -->
+          <div class="button-group">
+            <!-- 오늘 운동으로 복사 (오늘이 아닌 경우만) -->
+            <ion-button
+              v-if="!isToday"
+              expand="block"
+              fill="solid"
+              color="primary"
+              class="copy-button"
+              @click="handleCopyToToday"
+            >
+              <ion-icon slot="start" :icon="copyOutline" />
+              오늘 운동으로 복사
+            </ion-button>
+
+            <!-- 운동 추가 버튼 -->
+            <ion-button
+              expand="block"
+              fill="outline"
+              class="add-button"
+              @click="openExerciseSelector"
+            >
+              <ion-icon slot="start" :icon="addOutline" />
+              운동 추가
+            </ion-button>
+          </div>
         </div>
       </template>
     </template>
@@ -554,7 +605,18 @@ async function handleDeleteExercise(sessionExerciseId: number, event: Event) {
   border-top: 1px solid var(--ion-color-light);
 }
 
+.button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.copy-button {
+  --background: var(--ion-color-primary);
+}
+
 .add-button {
-  margin-top: 8px;
+  margin-top: 0;
 }
 </style>

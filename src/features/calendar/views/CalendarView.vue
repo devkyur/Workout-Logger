@@ -394,6 +394,20 @@ async function handleRefresh() {
   await loadSelectedDateSession()
 }
 
+async function handleCopyToToday() {
+  // 오늘 날짜로 이동
+  const today = format(new Date(), 'yyyy-MM-dd')
+  selectedDate.value = today
+  currentDate.value = new Date()
+
+  // 패널 축소
+  panelMode.value = 'normal'
+
+  // 데이터 새로고침
+  await loadAllMonthsData()
+  await loadSelectedDateSession()
+}
+
 function updateCalendarHeight() {
   if (calendarRef.value) {
     calendarHeight.value = calendarRef.value.offsetHeight
@@ -537,6 +551,7 @@ onUnmounted(() => {
               :expanded="panelMode === 'expanded'"
               @expand="expandPanel"
               @refresh="handleRefresh"
+              @copy-to-today="handleCopyToToday"
             />
           </div>
         </div>
