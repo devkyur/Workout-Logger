@@ -5,6 +5,9 @@
 -- ============================================
 -- DROP (기존 테이블 삭제)
 -- ============================================
+DROP TABLE IF EXISTS routine_sets CASCADE;
+DROP TABLE IF EXISTS routine_exercises CASCADE;
+DROP TABLE IF EXISTS routines CASCADE;
 DROP TABLE IF EXISTS exercise_sets CASCADE;
 DROP TABLE IF EXISTS session_exercises CASCADE;
 DROP TABLE IF EXISTS workout_sessions CASCADE;
@@ -77,6 +80,43 @@ CREATE TABLE exercise_sets (
 
 CREATE INDEX idx_exercise_sets_session_exercise ON exercise_sets(session_exercise_id);
 
+-- 6. Routines (루틴 템플릿)
+CREATE TABLE routines (
+  id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  name VARCHAR(100) NOT NULL,
+  description TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_routines_user ON routines(user_id);
+
+-- 7. Routine Exercises (루틴 내 운동)
+CREATE TABLE routine_exercises (
+  id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  routine_id BIGINT NOT NULL REFERENCES routines(id) ON DELETE CASCADE,
+  exercise_id BIGINT NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
+  order_num INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_routine_exercises_routine ON routine_exercises(routine_id);
+CREATE INDEX idx_routine_exercises_exercise ON routine_exercises(exercise_id);
+
+-- 8. Routine Sets (루틴 세트 템플릿)
+CREATE TABLE routine_sets (
+  id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  routine_exercise_id BIGINT NOT NULL REFERENCES routine_exercises(id) ON DELETE CASCADE,
+  set_number INT NOT NULL,
+  weight DECIMAL(6, 2),
+  reps INT,
+  duration_seconds INT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_routine_sets_routine_exercise ON routine_sets(routine_exercise_id);
+
 -- ============================================
 -- RLS Policies
 -- ============================================
@@ -138,6 +178,40 @@ USING (
     JOIN workout_sessions ws ON ws.id = se.session_id
     WHERE se.id = exercise_sets.session_exercise_id
     AND ws.user_id = auth.uid()
+  )
+);
+
+-- Routines: 본인 루틴만 CRUD
+ALTER TABLE routines ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can CRUD own routines"
+ON routines FOR ALL
+USING (auth.uid() = user_id);
+
+-- Routine Exercises: 본인 루틴의 운동만 CRUD
+ALTER TABLE routine_exercises ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can CRUD own routine exercises"
+ON routine_exercises FOR ALL
+USING (
+  EXISTS (
+    SELECT 1 FROM routines
+    WHERE routines.id = routine_exercises.routine_id
+    AND routines.user_id = auth.uid()
+  )
+);
+
+-- Routine Sets: 본인 루틴의 세트만 CRUD
+ALTER TABLE routine_sets ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can CRUD own routine sets"
+ON routine_sets FOR ALL
+USING (
+  EXISTS (
+    SELECT 1 FROM routine_exercises re
+    JOIN routines r ON r.id = re.routine_id
+    WHERE re.id = routine_sets.routine_exercise_id
+    AND r.user_id = auth.uid()
   )
 );
 

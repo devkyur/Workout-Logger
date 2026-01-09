@@ -15,7 +15,7 @@ import {
   IonSegmentButton,
   IonIcon,
 } from '@ionic/vue'
-import { logOutOutline, chevronBackOutline } from 'ionicons/icons'
+import { logOutOutline, chevronBackOutline, barbellOutline, chevronForwardOutline } from 'ionicons/icons'
 import { useRouter } from 'vue-router'
 import { useTheme, type ThemeMode } from '@/composables/useTheme'
 import { useAuth } from '@/composables/useAuth'
@@ -37,6 +37,10 @@ async function handleLogout() {
   await signOut()
   router.replace('/login')
 }
+
+function goToRoutines() {
+  router.push('/tabs/routines')
+}
 </script>
 
 <template>
@@ -54,6 +58,15 @@ async function handleLogout() {
 
     <ion-content>
       <ion-list>
+        <ion-item button @click="goToRoutines">
+          <ion-icon :icon="barbellOutline" slot="start" />
+          <ion-label>
+            <h2>나의 루틴</h2>
+            <p>자주 하는 운동 조합을 저장하세요</p>
+          </ion-label>
+          <ion-icon :icon="chevronForwardOutline" slot="end" />
+        </ion-item>
+
         <ion-item>
           <ion-label>
             <h2>테마</h2>

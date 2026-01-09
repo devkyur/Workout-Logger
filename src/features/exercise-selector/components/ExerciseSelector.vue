@@ -76,8 +76,8 @@ function closeModal() {
   modalController.dismiss(null, 'cancel')
 }
 
-function selectExercise(exerciseId: number) {
-  modalController.dismiss(exerciseId, 'select')
+function selectExercise(exercise: Exercise) {
+  modalController.dismiss(exercise, 'select')
 }
 
 async function loadData() {
@@ -141,7 +141,7 @@ onMounted(loadData)
         v-for="exercise in filteredExercises"
         :key="exercise.id"
         button
-        @click="selectExercise(exercise.id)"
+        @click="selectExercise(exercise)"
         :class="{ 'already-added': existingExerciseIds.has(exercise.id) }"
       >
         <ion-label>

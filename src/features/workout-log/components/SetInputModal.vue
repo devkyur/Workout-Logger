@@ -13,9 +13,10 @@ import {
   IonSpinner,
   modalController,
 } from '@ionic/vue'
-import { closeOutline, addOutline, removeOutline } from 'ionicons/icons'
+import { closeOutline, addOutline, removeOutline, barbellOutline } from 'ionicons/icons'
 import { useWorkout } from '@/composables/useWorkout'
-import type { Exercise, ExerciseSet, PreviousExerciseRecord } from '@/entities/workout/types'
+import { useRoutine } from '@/composables/useRoutine'
+import type { Exercise, ExerciseSet, PreviousExerciseRecord, RoutineWithExercises } from '@/entities/workout/types'
 import { format, parseISO } from 'date-fns'
 import { ko } from 'date-fns/locale'
 
@@ -43,6 +44,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const { fetchExercises, fetchPreviousExerciseRecord } = useWorkout()
+const { getRoutinesByExercise } = useRoutine()
 
 const exercise = ref<Exercise | null>(null)
 const loading = ref(true)
@@ -51,6 +53,8 @@ const sets = ref<SetInput[]>([
   { weight: null, reps: null, duration_seconds: null },
 ])
 const previousRecord = ref<PreviousExerciseRecord | null>(null)
+const routinesWithExercise = ref<RoutineWithExercises[]>([])
+const showRoutineList = ref(false)
 
 const isCardio = computed(() => {
   const cardioExercises = ['러닝', '사이클', '로잉머신', '스텝밀', '점프로프']
@@ -73,15 +77,17 @@ async function loadExercise() {
     const exercises = await fetchExercises()
     exercise.value = exercises.find((e) => e.id === props.exerciseId) ?? null
 
-    // 이전 기록 로드 (수정 모드가 아닐 때만)
+    // 이전 기록 및 루틴 로드 (수정 모드가 아닐 때만)
     if (!props.isEditMode) {
       try {
-        previousRecord.value = await fetchPreviousExerciseRecord(
-          props.exerciseId,
-          props.currentDate
-        )
+        const [prevRecord, routines] = await Promise.all([
+          fetchPreviousExerciseRecord(props.exerciseId, props.currentDate),
+          getRoutinesByExercise(props.exerciseId),
+        ])
+        previousRecord.value = prevRecord
+        routinesWithExercise.value = routines
       } catch (e) {
-        console.error('Failed to load previous record:', e)
+        console.error('Failed to load previous record or routines:', e)
       }
     }
 
@@ -147,6 +153,25 @@ function copyFromPrevious() {
   }))
 }
 
+function toggleRoutineList() {
+  showRoutineList.value = !showRoutineList.value
+}
+
+function copyFromRoutine(routine: RoutineWithExercises) {
+  const routineExercise = routine.exercises.find(
+    (re) => re.exercise_id === props.exerciseId
+  )
+  if (!routineExercise) return
+
+  sets.value = routineExercise.sets.map((set) => ({
+    weight: set.weight,
+    reps: set.reps,
+    duration_seconds: set.duration_seconds,
+  }))
+
+  showRoutineList.value = false
+}
+
 function save() {
   const validSets = sets.value
     .map((set, index) => ({
@@ -184,26 +209,60 @@ onMounted(loadExercise)
     </div>
 
     <template v-else>
-      <!-- 이전 기록 표시 (수정 모드가 아니고, 이전 기록이 있을 때) -->
-      <div v-if="!isEditMode && previousRecord" class="previous-record">
-        <div class="previous-record-header">
-          <span class="previous-record-title">이전 기록</span>
-          <span class="previous-record-date">{{ formatPreviousDate(previousRecord.date) }}</span>
+      <!-- 이전 기록 및 루틴 가져오기 (수정 모드가 아닐 때) -->
+      <div v-if="!isEditMode && (previousRecord || routinesWithExercise.length > 0)" class="reference-section">
+        <!-- 이전 기록 -->
+        <div v-if="previousRecord" class="previous-record">
+          <div class="previous-record-header">
+            <span class="previous-record-title">이전 기록</span>
+            <span class="previous-record-date">{{ formatPreviousDate(previousRecord.date) }}</span>
+          </div>
+          <div class="previous-record-sets">
+            <div v-for="(set, index) in previousRecord.sets" :key="set.id" class="previous-set-item">
+              <span class="set-number">{{ index + 1 }}</span>
+              <span v-if="set.duration_seconds">
+                {{ Math.floor(set.duration_seconds / 60) }}:{{
+                  (set.duration_seconds % 60).toString().padStart(2, '0')
+                }}
+              </span>
+              <span v-else>{{ set.weight ?? '-' }}kg × {{ set.reps ?? '-' }}회</span>
+            </div>
+          </div>
+          <ion-button fill="clear" size="small" class="copy-button" @click="copyFromPrevious">
+            이전 기록 복사
+          </ion-button>
         </div>
-        <div class="previous-record-sets">
-          <div v-for="(set, index) in previousRecord.sets" :key="set.id" class="previous-set-item">
-            <span class="set-number">{{ index + 1 }}</span>
-            <span v-if="set.duration_seconds">
-              {{ Math.floor(set.duration_seconds / 60) }}:{{
-                (set.duration_seconds % 60).toString().padStart(2, '0')
-              }}
-            </span>
-            <span v-else>{{ set.weight ?? '-' }}kg × {{ set.reps ?? '-' }}회</span>
+
+        <!-- 루틴에서 가져오기 -->
+        <div v-if="routinesWithExercise.length > 0" class="routine-reference">
+          <ion-button
+            fill="outline"
+            size="small"
+            class="routine-toggle-button"
+            @click="toggleRoutineList"
+          >
+            <ion-icon slot="start" :icon="barbellOutline" />
+            루틴에서 가져오기 ({{ routinesWithExercise.length }})
+          </ion-button>
+
+          <div v-if="showRoutineList" class="routine-list">
+            <div
+              v-for="routine in routinesWithExercise"
+              :key="routine.id"
+              class="routine-item"
+              @click="copyFromRoutine(routine)"
+            >
+              <span class="routine-name">{{ routine.name }}</span>
+              <span class="routine-sets">
+                {{
+                  routine.exercises
+                    .find((re) => re.exercise_id === exerciseId)
+                    ?.sets.length ?? 0
+                }}세트
+              </span>
+            </div>
           </div>
         </div>
-        <ion-button fill="clear" size="small" class="copy-button" @click="copyFromPrevious">
-          이전 기록 복사
-        </ion-button>
       </div>
 
       <!-- 기존 세트 표시 (추가 모드일 때만, 수정 모드는 직접 편집) -->
@@ -349,6 +408,58 @@ onMounted(loadExercise)
   --padding-start: 0;
   --padding-end: 0;
   font-size: 13px;
+}
+
+.reference-section {
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.routine-reference {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.routine-toggle-button {
+  --padding-start: 12px;
+  --padding-end: 12px;
+}
+
+.routine-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  background: var(--ion-color-light);
+  border-radius: 8px;
+}
+
+.routine-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--ion-background-color);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.routine-item:active {
+  background: var(--ion-color-light-shade);
+}
+
+.routine-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.routine-sets {
+  font-size: 13px;
+  color: var(--ion-color-primary);
 }
 
 .existing-sets {

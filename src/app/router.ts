@@ -49,6 +49,11 @@ const routes: RouteRecordRaw[] = [
         name: 'Settings',
         component: () => import('@/features/settings/views/SettingsView.vue'),
       },
+      {
+        path: 'routines',
+        name: 'Routines',
+        component: () => import('@/features/routines/views/RoutinesView.vue'),
+      },
     ],
   },
   // 기존 경로 호환성 유지

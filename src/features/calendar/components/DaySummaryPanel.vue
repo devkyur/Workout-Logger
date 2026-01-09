@@ -12,15 +12,17 @@ import {
   toastController,
   alertController,
 } from '@ionic/vue'
-import { addOutline, chevronForwardOutline, trashOutline, copyOutline } from 'ionicons/icons'
+import { addOutline, chevronForwardOutline, trashOutline, copyOutline, barbellOutline } from 'ionicons/icons'
 import { format, parseISO, isToday as isTodayFn } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import { useWorkout } from '@/composables/useWorkout'
+import { useRoutine } from '@/composables/useRoutine'
 import { useAuth } from '@/composables/useAuth'
 import { supabase } from '@/shared/lib/supabase'
-import type { WorkoutSessionWithExercises, SessionExerciseWithSets } from '@/entities/workout/types'
+import type { WorkoutSessionWithExercises, SessionExerciseWithSets, RoutineWithExercises } from '@/entities/workout/types'
 import ExerciseSelector from '@/features/exercise-selector/components/ExerciseSelector.vue'
 import SetInputModal from '@/features/workout-log/components/SetInputModal.vue'
+import RoutineSelector from '@/features/routines/components/RoutineSelector.vue'
 
 interface Props {
   selectedDate: string | null
@@ -45,6 +47,7 @@ const {
   updateExerciseSets,
   copySessionToDate,
 } = useWorkout()
+const { applyRoutineToSession } = useRoutine()
 
 const formattedDate = computed(() => {
   if (!props.selectedDate) return ''
@@ -123,7 +126,7 @@ async function openExerciseSelector() {
   const { data, role } = await modal.onWillDismiss()
 
   if (role === 'select' && data) {
-    await handleExerciseSelected(data)
+    await handleExerciseSelected(data.id)
   }
 }
 
@@ -258,6 +261,59 @@ async function handleCopyToToday() {
   } catch (e: any) {
     const toast = await toastController.create({
       message: e.message || '복사에 실패했습니다',
+      duration: 2000,
+      color: 'danger',
+    })
+    await toast.present()
+  }
+}
+
+// 루틴 적용 모달 열기
+async function openRoutineSelector() {
+  const modal = await modalController.create({
+    component: RoutineSelector,
+  })
+
+  await modal.present()
+
+  const { data, role } = await modal.onWillDismiss()
+
+  if (role === 'select' && data) {
+    await handleApplyRoutine(data as RoutineWithExercises)
+  }
+}
+
+// 루틴 적용
+async function handleApplyRoutine(routine: RoutineWithExercises) {
+  if (!props.selectedDate || !user.value) return
+
+  try {
+    // 세션 가져오거나 생성
+    const session = await getOrCreateSession(user.value.id, props.selectedDate)
+
+    // 루틴 적용
+    const { added, skipped } = await applyRoutineToSession(
+      routine,
+      session.id,
+      existingExerciseIds.value
+    )
+
+    let message = `${routine.name} 루틴이 적용되었습니다`
+    if (skipped > 0) {
+      message += ` (${skipped}개 운동 건너뜀)`
+    }
+
+    const toast = await toastController.create({
+      message,
+      duration: 2000,
+      color: 'success',
+    })
+    await toast.present()
+
+    emit('refresh')
+  } catch (e: any) {
+    const toast = await toastController.create({
+      message: e.message || '루틴 적용에 실패했습니다',
       duration: 2000,
       color: 'danger',
     })
@@ -407,6 +463,18 @@ async function handleDeleteExercise(sessionExerciseId: number, event: Event) {
               오늘 운동으로 복사
             </ion-button>
 
+            <!-- 루틴 적용 버튼 -->
+            <ion-button
+              expand="block"
+              fill="outline"
+              color="secondary"
+              class="routine-button"
+              @click="openRoutineSelector"
+            >
+              <ion-icon slot="start" :icon="barbellOutline" />
+              루틴 적용
+            </ion-button>
+
             <!-- 운동 추가 버튼 -->
             <ion-button
               expand="block"
@@ -432,10 +500,16 @@ async function handleDeleteExercise(sessionExerciseId: number, event: Event) {
 
       <div class="no-workout">
         <p>기록된 운동이 없어요</p>
-        <ion-button fill="outline" size="default" @click="openExerciseSelector">
-          <ion-icon slot="start" :icon="addOutline" />
-          운동 기록하기
-        </ion-button>
+        <div class="no-workout-buttons">
+          <ion-button fill="solid" size="default" @click="openRoutineSelector">
+            <ion-icon slot="start" :icon="barbellOutline" />
+            루틴 적용
+          </ion-button>
+          <ion-button fill="outline" size="default" @click="openExerciseSelector">
+            <ion-icon slot="start" :icon="addOutline" />
+            운동 추가
+          </ion-button>
+        </div>
       </div>
     </template>
   </div>
@@ -534,6 +608,18 @@ async function handleDeleteExercise(sessionExerciseId: number, event: Event) {
   color: var(--ion-color-medium);
   margin: 0 0 16px;
   font-size: 14px;
+}
+
+.no-workout-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 200px;
+  margin: 0 auto;
+}
+
+.routine-button {
+  margin-top: 0;
 }
 
 /* 확장 모드 스타일 */
