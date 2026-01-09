@@ -39,9 +39,9 @@ const isCardio = computed(() => {
 function loadExistingSets() {
   if (props.existingSets.length > 0) {
     sets.value = props.existingSets.map((s) => ({
-      weight: s.weight,
-      reps: s.reps,
-      duration_seconds: s.duration_seconds,
+      weight: s.weight ?? null,
+      reps: s.reps ?? null,
+      duration_seconds: s.duration_seconds ?? null,
     }))
   }
 }

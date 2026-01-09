@@ -47,7 +47,6 @@ const {
   addExerciseToRoutine,
   updateRoutineExerciseSets,
   removeExerciseFromRoutine,
-  fetchRoutine,
 } = useRoutine()
 
 const loading = ref(false)
@@ -122,7 +121,7 @@ async function openSetEditor(exerciseId: number, exercise: Exercise, existingInd
   const { data, role } = await modal.onWillDismiss()
 
   if (role === 'save' && data) {
-    if (existingIndex !== undefined) {
+    if (existingIndex !== undefined && exercises.value[existingIndex]) {
       exercises.value[existingIndex].sets = data.sets
     } else {
       exercises.value.push({

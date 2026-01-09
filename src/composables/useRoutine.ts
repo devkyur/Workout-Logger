@@ -9,7 +9,6 @@ import type {
 } from '@/shared/lib/database.types'
 import type {
   RoutineWithExercises,
-  RoutineExerciseWithSets,
   RoutineSetInput,
 } from '@/entities/workout/types'
 

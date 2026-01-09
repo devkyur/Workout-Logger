@@ -292,7 +292,7 @@ async function handleApplyRoutine(routine: RoutineWithExercises) {
     const session = await getOrCreateSession(user.value.id, props.selectedDate)
 
     // 루틴 적용
-    const { added, skipped } = await applyRoutineToSession(
+    const { skipped } = await applyRoutineToSession(
       routine,
       session.id,
       existingExerciseIds.value
