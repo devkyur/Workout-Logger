@@ -104,7 +104,7 @@ async function openExerciseSelector() {
 }
 
 async function openSetEditor(exerciseId: number, exercise: Exercise, existingIndex?: number) {
-  const existingSets = existingIndex !== undefined ? exercises.value[existingIndex].sets : []
+  const existingSets = existingIndex !== undefined ? exercises.value[existingIndex]?.sets ?? [] : []
 
   const modal = await modalController.create({
     component: RoutineSetEditor,
