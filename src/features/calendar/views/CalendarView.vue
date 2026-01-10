@@ -11,7 +11,7 @@ import {
   IonIcon,
   IonSpinner,
 } from '@ionic/vue'
-import { chevronBackOutline, chevronForwardOutline, arrowBackOutline } from 'ionicons/icons'
+import { arrowBackOutline } from 'ionicons/icons'
 import { format, addMonths, subMonths, parseISO } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import { useWorkout } from '@/composables/useWorkout'
@@ -148,16 +148,6 @@ async function loadSelectedDateSession() {
   } finally {
     sessionLoading.value = false
   }
-}
-
-function prevMonth() {
-  if (isAnimating.value) return
-  animateToMonth('prev')
-}
-
-function nextMonth() {
-  if (isAnimating.value) return
-  animateToMonth('next')
 }
 
 async function animateToMonth(direction: 'prev' | 'next') {
@@ -436,21 +426,11 @@ onUnmounted(() => {
   <ion-page>
     <ion-header>
       <ion-toolbar>
-        <!-- 기본 모드: 월 네비게이션 -->
+        <!-- 기본 모드: 월 타이틀 (가운데 정렬) -->
         <template v-if="panelMode === 'normal'">
-          <ion-buttons slot="start">
-            <ion-button @click="prevMonth" :disabled="isAnimating">
-              <ion-icon :icon="chevronBackOutline" />
-            </ion-button>
-          </ion-buttons>
-
+          <ion-buttons slot="start"></ion-buttons>
           <ion-title>{{ monthTitle }}</ion-title>
-
-          <ion-buttons slot="end">
-            <ion-button @click="nextMonth" :disabled="isAnimating">
-              <ion-icon :icon="chevronForwardOutline" />
-            </ion-button>
-          </ion-buttons>
+          <ion-buttons slot="end"></ion-buttons>
         </template>
 
         <!-- 확장 모드 -->
