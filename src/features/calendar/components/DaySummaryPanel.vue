@@ -485,23 +485,24 @@ defineExpose({
 <style scoped>
 .day-summary-panel {
   background: var(--ion-card-background, var(--ion-background-color));
-  border-radius: 16px 16px 0 0;
-  margin: 0 12px;
+  border-radius: 16px;
+  margin: 0 12px 12px;
   padding: 16px;
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
-  min-height: 100px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  min-height: 120px;
   transition: all 0.3s ease;
 }
 
 .day-summary-panel.expanded {
   margin: 0;
   border-radius: 0;
-  min-height: auto;
+  min-height: 100%;
   flex: 1;
   box-shadow: none;
   overflow-y: auto;
-  max-height: calc(100vh - 120px); /* 헤더 + 드래그핸들 높이 제외 */
+  max-height: calc(100vh - 120px);
   position: relative;
+  background: var(--ion-background-color);
 }
 
 .empty-state,
@@ -569,7 +570,10 @@ defineExpose({
 
 .no-workout {
   text-align: center;
-  padding: 16px 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .no-workout p {
@@ -601,21 +605,34 @@ defineExpose({
 
 /* 확장 모드 스타일 */
 .expanded-content {
-  padding-bottom: 80px;
+  padding-bottom: 100px;
 }
 
 .total-volume-header {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
-  color: var(--ion-color-primary-contrast);
+  color: var(--ion-color-primary);
   margin-bottom: 16px;
-  padding: 12px 16px;
+  padding: 14px 16px;
+  background: var(--ion-card-background, #1c1c1e);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.total-volume-header::before {
+  content: '';
+  width: 4px;
+  height: 20px;
   background: var(--ion-color-primary);
-  border-radius: 8px;
+  border-radius: 2px;
 }
 
 .workout-card {
   margin: 0 0 12px;
+  border-radius: 12px;
+  --background: var(--ion-card-background, #1c1c1e);
 }
 
 .card-header-content {
@@ -625,38 +642,41 @@ defineExpose({
 }
 
 .exercise-name {
-  font-size: 16px;
+  font-size: 15px;
+  font-weight: 600;
 }
 
 .sets-container {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 6px;
+  margin-bottom: 10px;
 }
 
 .set-item {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: var(--ion-color-light);
-  padding: 6px 10px;
-  border-radius: 6px;
+  background: var(--ion-color-light, #f4f5f8);
+  padding: 8px 12px;
+  border-radius: 8px;
   font-size: 13px;
 }
 
 .set-number {
   color: var(--ion-color-medium);
   font-size: 11px;
+  font-weight: 500;
 }
 
 .set-value {
-  font-weight: 500;
+  color: var(--ion-text-color);
 }
 
 .exercise-volume {
   font-size: 12px;
   color: var(--ion-color-primary);
+  font-weight: 500;
   margin-bottom: 8px;
 }
 
@@ -664,7 +684,9 @@ defineExpose({
   font-size: 13px;
   color: var(--ion-color-medium);
   margin: 0;
-  padding-top: 8px;
-  border-top: 1px solid var(--ion-color-light);
+  padding: 10px 12px;
+  background: var(--ion-color-light, #f4f5f8);
+  border-radius: 8px;
+  line-height: 1.4;
 }
 </style>
