@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { IonCard, IonCardHeader, IonCardTitle, IonCardContent } from '@ionic/vue'
 import type { HeatmapData } from '@/composables/useStats'
-import { startOfMonth, endOfMonth, getDay, format, eachDayOfInterval, parseISO } from 'date-fns'
+import { startOfMonth, endOfMonth, getDay, format, eachDayOfInterval } from 'date-fns'
 
 const props = defineProps<{
   data: HeatmapData[]

@@ -64,8 +64,11 @@ watch(
   () => props.exercises,
   (exercises) => {
     if (exercises.length > 0 && !selectedExerciseId.value) {
-      selectedExerciseId.value = exercises[0].id
-      emit('exerciseChange', exercises[0].id)
+      const firstExercise = exercises[0]
+      if (firstExercise) {
+        selectedExerciseId.value = firstExercise.id
+        emit('exerciseChange', firstExercise.id)
+      }
     }
   },
   { immediate: true }

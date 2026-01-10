@@ -6,9 +6,9 @@ import {
   IonToolbar,
   IonTitle,
   IonContent,
-  IonSegment,
-  IonSegmentButton,
-  IonLabel,
+  // IonSegment,
+  // IonSegmentButton,
+  // IonLabel,
   toastController,
 } from '@ionic/vue'
 import { useAuth } from '@/composables/useAuth'

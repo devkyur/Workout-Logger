@@ -475,8 +475,10 @@ export function useStats() {
     }))
 
     // 현재/이전 1RM 및 변화량 계산
-    const current1RM = dataPoints.length > 0 ? dataPoints[dataPoints.length - 1].estimated1RM : null
-    const previous1RM = dataPoints.length > 1 ? dataPoints[dataPoints.length - 2].estimated1RM : null
+    const lastPoint = dataPoints[dataPoints.length - 1]
+    const secondLastPoint = dataPoints[dataPoints.length - 2]
+    const current1RM = lastPoint?.estimated1RM ?? null
+    const previous1RM = secondLastPoint?.estimated1RM ?? null
 
     let changeKg: number | null = null
     let changePercent: number | null = null

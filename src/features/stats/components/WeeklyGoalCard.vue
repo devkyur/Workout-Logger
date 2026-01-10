@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import {
   IonCard,
   IonCardHeader,
@@ -7,7 +7,6 @@ import {
   IonCardContent,
   IonButton,
   IonIcon,
-  IonRange,
   alertController,
 } from '@ionic/vue'
 import { createOutline } from 'ionicons/icons'
@@ -22,9 +21,6 @@ const emit = defineEmits<{
   (e: 'save', targetValue: number): void
 }>()
 
-const isEditing = ref(false)
-const editValue = ref(5)
-
 const progressWidth = computed(() => {
   if (!props.goal) return '0%'
   return `${props.goal.percentage}%`
@@ -36,22 +32,6 @@ const progressColor = computed(() => {
   if (props.goal.percentage >= 60) return 'var(--ion-color-primary)'
   return 'var(--ion-color-warning)'
 })
-
-function startEdit() {
-  if (props.goal) {
-    editValue.value = props.goal.targetValue
-  }
-  isEditing.value = true
-}
-
-function cancelEdit() {
-  isEditing.value = false
-}
-
-function saveEdit() {
-  emit('save', editValue.value)
-  isEditing.value = false
-}
 
 async function showEditAlert() {
   const alert = await alertController.create({
