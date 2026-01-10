@@ -63,13 +63,14 @@ const progressPeriod = ref('3m')
 const currentYear = new Date().getFullYear()
 const currentMonth = new Date().getMonth() + 1
 
-const periodOptions = [
-  { value: '1m', label: '이번 달' },
-  { value: '3m', label: '3개월' },
-  { value: '6m', label: '6개월' },
-  { value: '1y', label: '1년' },
-  { value: 'all', label: '전체' },
-]
+// 기간 필터 (추후 수정 예정)
+// const periodOptions = [
+//   { value: '1m', label: '이번 달' },
+//   { value: '3m', label: '3개월' },
+//   { value: '6m', label: '6개월' },
+//   { value: '1y', label: '1년' },
+//   { value: 'all', label: '전체' },
+// ]
 
 const dateRange = computed(() => {
   const end = new Date()
