@@ -10,8 +10,10 @@ import {
   IonButton,
   IonIcon,
   IonSpinner,
+  IonFab,
+  IonFabButton,
 } from '@ionic/vue'
-import { arrowBackOutline } from 'ionicons/icons'
+import { arrowBackOutline, addOutline, closeOutline, barbellOutline, copyOutline } from 'ionicons/icons'
 import { format, addMonths, subMonths, parseISO } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import { useWorkout } from '@/composables/useWorkout'
@@ -54,6 +56,40 @@ const calendarHeight = ref(0)
 
 // 패널 섹션 ref (스크롤 위치 확인용)
 const panelSectionRef = ref<HTMLElement | null>(null)
+
+// DaySummaryPanel ref
+const daySummaryPanelRef = ref<InstanceType<typeof DaySummaryPanel> | null>(null)
+
+// FAB 메뉴 상태
+const isFabMenuOpen = ref(false)
+
+function toggleFabMenu() {
+  isFabMenuOpen.value = !isFabMenuOpen.value
+}
+
+function closeFabMenu() {
+  isFabMenuOpen.value = false
+}
+
+function handleFabAddExercise() {
+  closeFabMenu()
+  daySummaryPanelRef.value?.openExerciseSelector()
+}
+
+function handleFabApplyRoutine() {
+  closeFabMenu()
+  daySummaryPanelRef.value?.openRoutineSelector()
+}
+
+function handleFabCopyToToday() {
+  closeFabMenu()
+  daySummaryPanelRef.value?.handleCopyToToday()
+}
+
+// FAB 메뉴에서 오늘로 복사 버튼 표시 여부
+const showCopyToToday = computed(() => {
+  return daySummaryPanelRef.value?.isToday === false && daySummaryPanelRef.value?.hasWorkout
+})
 
 // 패널 위치 (0 = 기본 위치, calendarHeight = 완전 확장)
 const panelOffsetY = ref(0)
@@ -527,6 +563,7 @@ onUnmounted(() => {
             @touchend="panelMode === 'normal' ? onPanelTouchEnd() : onExpandedTouchEnd()"
           >
             <DaySummaryPanel
+              ref="daySummaryPanelRef"
               :selected-date="selectedDate"
               :session="selectedSession"
               :loading="sessionLoading"
@@ -537,6 +574,42 @@ onUnmounted(() => {
             />
           </div>
         </div>
+
+        <!-- FAB 메뉴 오버레이 -->
+        <div
+          v-if="isFabMenuOpen"
+          class="fab-overlay"
+          @click="closeFabMenu"
+        ></div>
+
+        <!-- FAB 메뉴 -->
+        <Transition name="fab-menu">
+          <div v-if="isFabMenuOpen" class="fab-menu">
+            <div class="fab-menu-item" @click="handleFabAddExercise">
+              <ion-icon :icon="addOutline" />
+              <span>운동 추가</span>
+            </div>
+            <div class="fab-menu-item" @click="handleFabApplyRoutine">
+              <ion-icon :icon="barbellOutline" />
+              <span>루틴 적용</span>
+            </div>
+            <div
+              v-if="showCopyToToday"
+              class="fab-menu-item"
+              @click="handleFabCopyToToday"
+            >
+              <ion-icon :icon="copyOutline" />
+              <span>오늘로 복사</span>
+            </div>
+          </div>
+        </Transition>
+
+        <!-- FAB 버튼 (항상 고정 위치) -->
+        <ion-fab vertical="bottom" horizontal="end" slot="fixed">
+          <ion-fab-button @click="toggleFabMenu" :class="{ 'fab-open': isFabMenuOpen }">
+            <ion-icon :icon="isFabMenuOpen ? closeOutline : addOutline" />
+          </ion-fab-button>
+        </ion-fab>
       </template>
     </ion-content>
   </ion-page>
@@ -603,5 +676,74 @@ onUnmounted(() => {
 
 .panel-section.expanded {
   overflow-y: auto;
+}
+
+/* FAB 스타일 */
+ion-fab-button {
+  --background: var(--ion-color-primary);
+  --box-shadow: 0 4px 16px rgba(var(--ion-color-primary-rgb), 0.4);
+  transition: transform 0.2s ease;
+}
+
+ion-fab-button.fab-open {
+  --background: var(--ion-color-medium);
+  transform: rotate(45deg);
+}
+
+.fab-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+}
+
+.fab-menu {
+  position: fixed;
+  bottom: 90px;
+  right: 20px;
+  background: var(--ion-card-background, #2a2a2a);
+  border-radius: 12px;
+  padding: 8px 0;
+  min-width: 160px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+}
+
+.fab-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.fab-menu-item:active {
+  background: var(--ion-color-light);
+}
+
+.fab-menu-item ion-icon {
+  font-size: 20px;
+  color: var(--ion-color-primary);
+}
+
+.fab-menu-item span {
+  font-size: 15px;
+  color: var(--ion-text-color);
+}
+
+/* FAB 메뉴 트랜지션 */
+.fab-menu-enter-active,
+.fab-menu-leave-active {
+  transition: all 0.2s ease;
+}
+
+.fab-menu-enter-from,
+.fab-menu-leave-to {
+  opacity: 0;
+  transform: translateY(10px) scale(0.95);
 }
 </style>

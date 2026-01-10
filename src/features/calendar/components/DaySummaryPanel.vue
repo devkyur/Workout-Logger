@@ -12,7 +12,7 @@ import {
   toastController,
   alertController,
 } from '@ionic/vue'
-import { addOutline, chevronForwardOutline, trashOutline, copyOutline, barbellOutline } from 'ionicons/icons'
+import { chevronForwardOutline, trashOutline } from 'ionicons/icons'
 import { format, parseISO, isToday as isTodayFn } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import { useWorkout } from '@/composables/useWorkout'
@@ -363,6 +363,15 @@ async function handleDeleteExercise(sessionExerciseId: number, event: Event) {
 
   await alert.present()
 }
+
+// CalendarView에서 호출할 수 있도록 메서드 노출
+defineExpose({
+  openExerciseSelector,
+  openRoutineSelector,
+  handleCopyToToday,
+  isToday,
+  hasWorkout,
+})
 </script>
 
 <template>
@@ -448,44 +457,6 @@ async function handleDeleteExercise(sessionExerciseId: number, event: Event) {
             </ion-card-content>
           </ion-card>
 
-          <!-- 버튼 그룹 -->
-          <div class="button-group">
-            <!-- 오늘 운동으로 복사 (오늘이 아닌 경우만) -->
-            <ion-button
-              v-if="!isToday"
-              expand="block"
-              fill="solid"
-              color="primary"
-              class="copy-button"
-              @click="handleCopyToToday"
-            >
-              <ion-icon slot="start" :icon="copyOutline" />
-              오늘 운동으로 복사
-            </ion-button>
-
-            <!-- 루틴 적용 버튼 -->
-            <ion-button
-              expand="block"
-              fill="outline"
-              color="secondary"
-              class="routine-button"
-              @click="openRoutineSelector"
-            >
-              <ion-icon slot="start" :icon="barbellOutline" />
-              루틴 적용
-            </ion-button>
-
-            <!-- 운동 추가 버튼 -->
-            <ion-button
-              expand="block"
-              fill="outline"
-              class="add-button"
-              @click="openExerciseSelector"
-            >
-              <ion-icon slot="start" :icon="addOutline" />
-              운동 추가
-            </ion-button>
-          </div>
         </div>
       </template>
     </template>
@@ -496,21 +467,17 @@ async function handleDeleteExercise(sessionExerciseId: number, event: Event) {
         <div class="panel-header">
           <span class="date">{{ formattedDate }}</span>
         </div>
+        <div class="no-workout">
+          <p>기록된 운동이 없어요</p>
+        </div>
       </template>
 
-      <div class="no-workout">
-        <p>기록된 운동이 없어요</p>
-        <div class="no-workout-buttons">
-          <ion-button fill="solid" size="default" @click="openRoutineSelector">
-            <ion-icon slot="start" :icon="barbellOutline" />
-            루틴 적용
-          </ion-button>
-          <ion-button fill="outline" size="default" @click="openExerciseSelector">
-            <ion-icon slot="start" :icon="addOutline" />
-            운동 추가
-          </ion-button>
+      <template v-else>
+        <div class="no-workout-expanded">
+          <p>기록된 운동이 없어요</p>
+          <p class="hint">우측 하단 + 버튼으로 운동을 추가하세요</p>
         </div>
-      </div>
+      </template>
     </template>
   </div>
 </template>
@@ -534,6 +501,7 @@ async function handleDeleteExercise(sessionExerciseId: number, event: Event) {
   box-shadow: none;
   overflow-y: auto;
   max-height: calc(100vh - 120px); /* 헤더 + 드래그핸들 높이 제외 */
+  position: relative;
 }
 
 .empty-state,
@@ -606,20 +574,29 @@ async function handleDeleteExercise(sessionExerciseId: number, event: Event) {
 
 .no-workout p {
   color: var(--ion-color-medium);
-  margin: 0 0 16px;
+  margin: 0;
   font-size: 14px;
 }
 
-.no-workout-buttons {
+.no-workout-expanded {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  max-width: 200px;
-  margin: 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
 }
 
-.routine-button {
-  margin-top: 0;
+.no-workout-expanded p {
+  color: var(--ion-color-medium);
+  margin: 0;
+  font-size: 15px;
+}
+
+.no-workout-expanded .hint {
+  margin-top: 8px;
+  font-size: 13px;
+  opacity: 0.7;
 }
 
 /* 확장 모드 스타일 */
@@ -689,20 +666,5 @@ async function handleDeleteExercise(sessionExerciseId: number, event: Event) {
   margin: 0;
   padding-top: 8px;
   border-top: 1px solid var(--ion-color-light);
-}
-
-.button-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 16px;
-}
-
-.copy-button {
-  --background: var(--ion-color-primary);
-}
-
-.add-button {
-  margin-top: 0;
 }
 </style>
