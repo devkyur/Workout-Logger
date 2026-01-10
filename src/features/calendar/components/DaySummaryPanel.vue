@@ -146,8 +146,8 @@ async function handleExerciseSelected(exerciseId: number) {
       isAddingToExisting: !!existingExercise,
       currentDate: props.selectedDate,
     },
-    breakpoints: [0, 0.75],
-    initialBreakpoint: 0.75,
+    breakpoints: [0, 0.8],
+    initialBreakpoint: 0.8,
   })
 
   await modal.present()
@@ -202,8 +202,8 @@ async function handleEditExercise(sessionExercise: SessionExerciseWithSets, even
       isEditMode: true,
       currentDate: props.selectedDate,
     },
-    breakpoints: [0, 0.75],
-    initialBreakpoint: 0.75,
+    breakpoints: [0, 0.8],
+    initialBreakpoint: 0.8,
   })
 
   await modal.present()

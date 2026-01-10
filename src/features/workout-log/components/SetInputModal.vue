@@ -355,6 +355,15 @@ onMounted(loadExercise)
 </template>
 
 <style scoped>
+ion-content {
+  --overflow: auto;
+  --padding-bottom: 120px;
+}
+
+ion-content::part(scroll) {
+  overflow-y: auto;
+}
+
 .loading-container {
   display: flex;
   justify-content: center;
@@ -491,9 +500,12 @@ onMounted(loadExercise)
   font-size: 13px;
 }
 
-.sets-section,
-.memo-section {
+.sets-section {
   margin-bottom: 24px;
+}
+
+.memo-section {
+  margin-bottom: 60px;
 }
 
 .section-header {
