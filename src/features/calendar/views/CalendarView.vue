@@ -15,11 +15,13 @@ import { chevronBackOutline, chevronForwardOutline, arrowBackOutline } from 'ion
 import { format, addMonths, subMonths, parseISO } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import { useWorkout } from '@/composables/useWorkout'
+import { useAuth } from '@/composables/useAuth'
 import type { DaySummary, WorkoutSessionWithExercises } from '@/entities/workout/types'
 import MonthGrid from '../components/MonthGrid.vue'
 import DaySummaryPanel from '../components/DaySummaryPanel.vue'
 
 const { fetchMonthSummary, fetchDaySession } = useWorkout()
+const { user } = useAuth()
 
 const currentDate = ref(new Date())
 const loading = ref(false)
@@ -132,14 +134,14 @@ async function loadAllMonthsData() {
 }
 
 async function loadSelectedDateSession() {
-  if (!selectedDate.value) {
+  if (!selectedDate.value || !user.value) {
     selectedSession.value = null
     return
   }
 
   sessionLoading.value = true
   try {
-    selectedSession.value = await fetchDaySession(selectedDate.value)
+    selectedSession.value = await fetchDaySession(user.value.id, selectedDate.value)
   } catch (e) {
     console.error('Failed to load session:', e)
     selectedSession.value = null

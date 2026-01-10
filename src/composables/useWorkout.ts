@@ -91,7 +91,7 @@ export function useWorkout() {
   }
 
   // 특정 날짜 세션 조회
-  async function fetchDaySession(date: string): Promise<WorkoutSessionWithExercises | null> {
+  async function fetchDaySession(userId: string, date: string): Promise<WorkoutSessionWithExercises | null> {
     const { data, error: err } = await supabase
       .from('workout_sessions')
       .select(`
@@ -102,6 +102,7 @@ export function useWorkout() {
           exercise_sets (*)
         )
       `)
+      .eq('user_id', userId)
       .eq('date', date)
       .single()
 
