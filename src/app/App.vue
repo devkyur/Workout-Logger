@@ -10,3 +10,10 @@ const { isDarkMode } = useTheme()
     <ion-router-outlet />
   </ion-app>
 </template>
+
+<style>
+/* Action Sheet Cancel 버튼 숨김 */
+.hide-cancel-button .action-sheet-cancel {
+  display: none !important;
+}
+</style>

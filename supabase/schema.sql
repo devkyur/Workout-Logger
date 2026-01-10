@@ -309,3 +309,25 @@ INSERT INTO exercises (category_id, name, is_custom) VALUES
   ((SELECT id FROM cat WHERE name = '유산소'), '스텝밀', false),
   ((SELECT id FROM cat WHERE name = '유산소'), '점프로프', false),
   ((SELECT id FROM cat WHERE name = '유산소'), '버피', false);
+
+-- ============================================
+-- 9. User Goals (주간 목표)
+-- ============================================
+CREATE TABLE user_goals (
+  id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  goal_type TEXT NOT NULL DEFAULT 'weekly_workouts',
+  target_value INT NOT NULL DEFAULT 5,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(user_id, goal_type)
+);
+
+CREATE INDEX idx_user_goals_user ON user_goals(user_id);
+
+-- User Goals RLS
+ALTER TABLE user_goals ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can CRUD own goals"
+ON user_goals FOR ALL
+USING (auth.uid() = user_id);

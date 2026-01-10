@@ -211,6 +211,32 @@ export interface Database {
           created_at?: string
         }
       }
+      user_goals: {
+        Row: {
+          id: number
+          user_id: string
+          goal_type: string
+          target_value: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          user_id: string
+          goal_type?: string
+          target_value?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          user_id?: string
+          goal_type?: string
+          target_value?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
   }
 }
@@ -234,3 +260,8 @@ export type RoutineSet = Database['public']['Tables']['routine_sets']['Row']
 export type InsertRoutine = Database['public']['Tables']['routines']['Insert']
 export type InsertRoutineExercise = Database['public']['Tables']['routine_exercises']['Insert']
 export type InsertRoutineSet = Database['public']['Tables']['routine_sets']['Insert']
+
+// 목표 타입
+export type UserGoal = Database['public']['Tables']['user_goals']['Row']
+export type InsertUserGoal = Database['public']['Tables']['user_goals']['Insert']
+export type UpdateUserGoal = Database['public']['Tables']['user_goals']['Update']
