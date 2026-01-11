@@ -341,6 +341,23 @@ export function useWorkout() {
     }
   }
 
+  // 세션 운동 순서 변경
+  async function reorderSessionExercises(
+    exerciseIds: number[]
+  ): Promise<void> {
+    // 각 운동의 order_num을 순서대로 업데이트
+    const updates = exerciseIds.map((id, index) =>
+      supabase
+        .from('session_exercises')
+        .update({ order_num: index + 1 })
+        .eq('id', id)
+    )
+
+    const results = await Promise.all(updates)
+    const error = results.find((r) => r.error)?.error
+    if (error) throw error
+  }
+
   // 특정 운동의 이전 기록 조회 (가장 최근 기록)
   async function fetchPreviousExerciseRecord(
     exerciseId: number,
@@ -404,5 +421,6 @@ export function useWorkout() {
     updateSessionMemo,
     fetchPreviousExerciseRecord,
     copySessionToDate,
+    reorderSessionExercises,
   }
 }

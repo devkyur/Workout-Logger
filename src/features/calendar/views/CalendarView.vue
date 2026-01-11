@@ -63,6 +63,9 @@ const daySummaryPanelRef = ref<InstanceType<typeof DaySummaryPanel> | null>(null
 // FAB 메뉴 상태
 const isFabMenuOpen = ref(false)
 
+// 드래그 중 상태 (순서 변경 중일 때 축소 제스처 비활성화)
+const isDragging = ref(false)
+
 function toggleFabMenu() {
   isFabMenuOpen.value = !isFabMenuOpen.value
 }
@@ -365,6 +368,9 @@ function onPanelTouchEnd() {
 function onExpandedTouchStart(e: TouchEvent) {
   if (isAnimating.value) return
 
+  // 드래그 중일 때는 축소 제스처 비활성화
+  if (isDragging.value) return
+
   // 스크롤이 맨 위가 아니면 축소 제스처 비활성화 (일반 스크롤 허용)
   const panelElement = panelSectionRef.value?.querySelector('.day-summary-panel')
   if (panelElement && panelElement.scrollTop > 0) {
@@ -420,6 +426,23 @@ function expandPanel() {
 async function handleRefresh() {
   await loadAllMonthsData()
   await loadSelectedDateSession()
+}
+
+function handleReorder(exerciseIds: number[]) {
+  if (!selectedSession.value) return
+
+  // 로컬에서 순서 변경 (optimistic update)
+  const exerciseMap = new Map(
+    selectedSession.value.exercises.map((e) => [e.id, e])
+  )
+  const reorderedExercises = exerciseIds
+    .map((id) => exerciseMap.get(id))
+    .filter((e) => e !== undefined)
+
+  selectedSession.value = {
+    ...selectedSession.value,
+    exercises: reorderedExercises,
+  }
 }
 
 async function handleCopyToToday() {
@@ -571,6 +594,8 @@ onUnmounted(() => {
               @expand="expandPanel"
               @refresh="handleRefresh"
               @copy-to-today="handleCopyToToday"
+              @dragging="isDragging = $event"
+              @reorder="handleReorder"
             />
           </div>
         </div>

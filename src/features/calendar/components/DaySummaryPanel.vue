@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch, nextTick } from 'vue'
 import {
   IonButton,
   IonIcon,
@@ -8,11 +8,16 @@ import {
   IonCardHeader,
   IonCardTitle,
   IonCardContent,
+  IonItemSliding,
+  IonItem,
+  IonItemOptions,
+  IonItemOption,
   modalController,
   toastController,
   alertController,
 } from '@ionic/vue'
-import { chevronForwardOutline, trashOutline } from 'ionicons/icons'
+import { chevronForwardOutline, reorderTwoOutline, trashOutline } from 'ionicons/icons'
+import Sortable from 'sortablejs'
 import { format, parseISO, isToday as isTodayFn } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import { useWorkout } from '@/composables/useWorkout'
@@ -36,6 +41,8 @@ const emit = defineEmits<{
   expand: []
   refresh: []
   copyToToday: []
+  dragging: [isDragging: boolean]
+  reorder: [exerciseIds: number[]]
 }>()
 
 const { user } = useAuth()
@@ -46,7 +53,80 @@ const {
   deleteEmptySession,
   updateExerciseSets,
   copySessionToDate,
+  reorderSessionExercises,
 } = useWorkout()
+
+// Sortable 관련
+const exerciseListRef = ref<HTMLElement | null>(null)
+let sortableInstance: Sortable | null = null
+
+// Sortable 초기화
+function initSortable() {
+  if (!exerciseListRef.value) return
+
+  // 기존 인스턴스 정리
+  if (sortableInstance) {
+    sortableInstance.destroy()
+  }
+
+  sortableInstance = new Sortable(exerciseListRef.value, {
+    animation: 200,
+    handle: '.drag-handle',
+    ghostClass: 'sortable-ghost',
+    chosenClass: 'sortable-chosen',
+    dragClass: 'sortable-drag',
+    onStart: () => emit('dragging', true),
+    onEnd: () => {
+      emit('dragging', false)
+      handleSortEnd()
+    },
+  })
+}
+
+// 드래그 종료 시 순서 저장
+async function handleSortEnd() {
+  if (!props.session || !exerciseListRef.value) return
+
+  // DOM에서 현재 순서 읽기
+  const wrappers = exerciseListRef.value.querySelectorAll('.exercise-card-wrapper')
+  const exerciseIds: number[] = []
+  wrappers.forEach((el) => {
+    const id = el.getAttribute('data-id')
+    if (id) exerciseIds.push(parseInt(id, 10))
+  })
+
+  // 부모에게 순서 변경 알림 (optimistic update)
+  emit('reorder', exerciseIds)
+
+  // API로 순서 저장 (백그라운드)
+  try {
+    await reorderSessionExercises(exerciseIds)
+  } catch (e) {
+    console.error('Failed to reorder exercises:', e)
+    const toast = await toastController.create({
+      message: '순서 변경에 실패했습니다',
+      duration: 2000,
+      color: 'danger',
+    })
+    await toast.present()
+    emit('refresh') // 실패 시에만 원래 순서로 복구
+  }
+}
+
+// expanded 모드 또는 session 변경 시 Sortable 재초기화
+watch(
+  [() => props.expanded, () => props.session],
+  async ([expanded, session]) => {
+    if (expanded && session?.exercises.length) {
+      await nextTick()
+      initSortable()
+    } else if (sortableInstance) {
+      sortableInstance.destroy()
+      sortableInstance = null
+    }
+  },
+  { deep: true }
+)
 const { applyRoutineToSession } = useRoutine()
 
 const formattedDate = computed(() => {
@@ -419,43 +499,60 @@ defineExpose({
           </div>
 
           <!-- 운동 카드 목록 -->
-          <ion-card
-            v-for="exercise in session!.exercises"
-            :key="exercise.id"
-            class="workout-card"
-            button
-            @click="handleEditExercise(exercise, $event)"
-          >
-            <ion-card-header>
-              <div class="card-header-content">
-                <ion-card-title class="exercise-name">
-                  {{ exercise.exercise?.name ?? '알 수 없음' }}
-                </ion-card-title>
-                <ion-button fill="clear" color="danger" size="small" @click="handleDeleteExercise(exercise.id, $event)">
-                  <ion-icon :icon="trashOutline" />
-                </ion-button>
-              </div>
-            </ion-card-header>
+          <div ref="exerciseListRef" class="exercise-list">
+            <div
+              v-for="exercise in session!.exercises"
+              :key="exercise.id"
+              class="exercise-card-wrapper"
+              :data-id="exercise.id"
+            >
+              <ion-item-sliding class="exercise-sliding-item">
+                <ion-item class="exercise-item" lines="none">
+                  <ion-card
+                    class="workout-card"
+                    button
+                    @click="handleEditExercise(exercise, $event)"
+                  >
+                    <ion-card-header>
+                      <div class="card-header-content">
+                        <ion-card-title class="exercise-name">
+                          {{ exercise.exercise?.name ?? '알 수 없음' }}
+                        </ion-card-title>
+                        <div class="drag-handle" @click.stop @touchstart.stop @touchmove.stop @touchend.stop>
+                          <ion-icon :icon="reorderTwoOutline" />
+                        </div>
+                      </div>
+                    </ion-card-header>
 
-            <ion-card-content>
-              <div class="sets-container">
-                <div
-                  v-for="(set, index) in exercise.sets"
-                  :key="set.id"
-                  class="set-item"
-                >
-                  <span class="set-number">{{ index + 1 }}</span>
-                  <span class="set-value">{{ formatSet(set) }}</span>
-                </div>
-              </div>
+                    <ion-card-content>
+                      <div class="sets-container">
+                        <div
+                          v-for="(set, index) in exercise.sets"
+                          :key="set.id"
+                          class="set-item"
+                        >
+                          <span class="set-number">{{ index + 1 }}</span>
+                          <span class="set-value">{{ formatSet(set) }}</span>
+                        </div>
+                      </div>
 
-              <div v-if="getExerciseVolume(exercise) > 0" class="exercise-volume">
-                볼륨: {{ getExerciseVolume(exercise).toLocaleString() }}kg
-              </div>
+                      <div v-if="getExerciseVolume(exercise) > 0" class="exercise-volume">
+                        볼륨: {{ getExerciseVolume(exercise).toLocaleString() }}kg
+                      </div>
 
-              <p v-if="exercise.memo" class="memo">{{ exercise.memo }}</p>
-            </ion-card-content>
-          </ion-card>
+                      <p v-if="exercise.memo" class="memo">{{ exercise.memo }}</p>
+                    </ion-card-content>
+                  </ion-card>
+                </ion-item>
+
+                <ion-item-options side="end">
+                  <ion-item-option color="danger" @click="handleDeleteExercise(exercise.id, $event)">
+                    <ion-icon slot="icon-only" :icon="trashOutline" />
+                  </ion-item-option>
+                </ion-item-options>
+              </ion-item-sliding>
+            </div>
+          </div>
 
         </div>
       </template>
@@ -688,5 +785,64 @@ defineExpose({
   background: var(--ion-color-light, #f4f5f8);
   border-radius: 8px;
   line-height: 1.4;
+}
+
+/* 운동 목록 스타일 */
+.exercise-list {
+  background: transparent;
+  padding: 0;
+}
+
+.exercise-sliding-item {
+  --background: transparent;
+  margin-bottom: 12px;
+}
+
+.exercise-item {
+  --background: transparent;
+  --padding-start: 0;
+  --padding-end: 0;
+  --inner-padding-end: 0;
+}
+
+.exercise-item .workout-card {
+  width: 100%;
+  margin: 0;
+}
+
+/* 드래그 핸들 */
+.drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  color: var(--ion-color-medium);
+  cursor: grab;
+  touch-action: none;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+  color: var(--ion-color-primary);
+}
+
+.drag-handle ion-icon {
+  font-size: 20px;
+}
+
+/* Sortable 드래그 스타일 */
+.sortable-ghost {
+  opacity: 0.4;
+}
+
+.sortable-chosen {
+  opacity: 0.8;
+}
+
+.sortable-drag {
+  opacity: 1;
+  background: var(--ion-card-background);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 </style>
