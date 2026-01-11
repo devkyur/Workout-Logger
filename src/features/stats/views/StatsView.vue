@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import {
   IonPage,
   IonHeader,
@@ -10,6 +10,7 @@ import {
   // IonSegmentButton,
   // IonLabel,
   toastController,
+  onIonViewWillEnter,
 } from '@ionic/vue'
 import { useAuth } from '@/composables/useAuth'
 import {
@@ -221,7 +222,7 @@ watch(periodFilter, () => {
   loadBalanceData()
 })
 
-onMounted(() => {
+onIonViewWillEnter(() => {
   loadStats()
 })
 </script>
