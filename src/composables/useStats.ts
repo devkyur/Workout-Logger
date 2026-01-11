@@ -531,14 +531,6 @@ export function useStats() {
 
   // 주간 목표 조회
   async function fetchWeeklyGoal(userId: string): Promise<WeeklyGoal | null> {
-    // 목표 조회
-    const { data: goalData, error: goalError } = await supabase
-      .from('user_goals')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('goal_type', 'weekly_workouts')
-      .single()
-
     // 이번 주 운동 횟수 계산
     const now = new Date()
     const dayOfWeek = now.getDay()
@@ -559,8 +551,23 @@ export function useStats() {
 
     const currentValue = new Set(sessions?.map(s => s.date) ?? []).size
 
-    // 목표가 없으면 기본값으로 생성
-    if (goalError || !goalData) {
+    // 목표 조회 (테이블이 없을 수 있으므로 try-catch)
+    let goalData = null
+    try {
+      const { data, error } = await supabase
+        .from('user_goals')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('goal_type', 'weekly_workouts')
+        .maybeSingle()
+
+      if (!error) goalData = data
+    } catch {
+      // user_goals 테이블이 없는 경우 무시
+    }
+
+    // 목표가 없으면 기본값
+    if (!goalData) {
       return {
         id: 0,
         targetValue: 5,
