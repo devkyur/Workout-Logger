@@ -4,7 +4,7 @@ export type ThemeMode = 'light' | 'dark' | 'system'
 
 const STORAGE_KEY = 'theme-mode'
 
-const themeMode = ref<ThemeMode>('system')
+const themeMode = ref<ThemeMode>('dark')
 const systemPrefersDark = ref(false)
 
 // 시스템 다크모드 감지
@@ -19,12 +19,17 @@ if (typeof window !== 'undefined') {
 
 // localStorage에서 테마 복구
 function loadTheme(): ThemeMode {
-  if (typeof window === 'undefined') return 'system'
+  if (typeof window === 'undefined') return 'dark'
   const saved = localStorage.getItem(STORAGE_KEY)
-  if (saved === 'light' || saved === 'dark' || saved === 'system') {
+  // 임시: 다크모드만 사용
+  // if (saved === 'light' || saved === 'dark' || saved === 'system') {
+  //   return saved
+  // }
+  // return 'system'
+  if (saved === 'dark') {
     return saved
   }
-  return 'system'
+  return 'dark'
 }
 
 // 초기화

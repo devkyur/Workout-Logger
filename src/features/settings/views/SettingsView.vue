@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+// import { computed } from 'vue' // 임시 주석: 테마 선택 기능 비활성화
 import {
   IonPage,
   IonHeader,
@@ -11,23 +11,26 @@ import {
   IonList,
   IonItem,
   IonLabel,
-  IonSegment,
-  IonSegmentButton,
+  // IonSegment, // 임시 주석: 테마 선택 기능 비활성화
+  // IonSegmentButton, // 임시 주석: 테마 선택 기능 비활성화
   IonIcon,
 } from '@ionic/vue'
 import { logOutOutline, chevronBackOutline, barbellOutline, chevronForwardOutline } from 'ionicons/icons'
 import { useRouter } from 'vue-router'
-import { useTheme, type ThemeMode } from '@/composables/useTheme'
+// 임시 주석: 테마 선택 기능 비활성화
+// import { useTheme, type ThemeMode } from '@/composables/useTheme'
 import { useAuth } from '@/composables/useAuth'
 
 const router = useRouter()
-const { themeMode, setTheme } = useTheme()
+// 임시 주석: 테마 선택 기능 비활성화
+// const { themeMode, setTheme } = useTheme()
 const { signOut } = useAuth()
 
-const selectedTheme = computed({
-  get: () => themeMode.value,
-  set: (value: ThemeMode) => setTheme(value),
-})
+// 임시 주석: 테마 선택 기능 비활성화
+// const selectedTheme = computed({
+//   get: () => themeMode.value,
+//   set: (value: ThemeMode) => setTheme(value),
+// })
 
 function goBack() {
   router.back()
@@ -67,6 +70,7 @@ function goToRoutines() {
           <ion-icon :icon="chevronForwardOutline" slot="end" />
         </ion-item>
 
+        <!-- 임시 주석: 테마 선택 기능 비활성화 (다크모드 고정)
         <ion-item>
           <ion-label>
             <h2>테마</h2>
@@ -87,6 +91,7 @@ function goToRoutines() {
             </ion-segment-button>
           </ion-segment>
         </ion-item>
+        -->
       </ion-list>
 
       <div class="logout-section">
